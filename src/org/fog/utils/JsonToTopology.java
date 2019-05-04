@@ -36,16 +36,16 @@ public class JsonToTopology {
 	private static List<FogDevice> fogDevices = new ArrayList<FogDevice>();
 	private static List<Sensor> sensors = new ArrayList<Sensor>();
 	private static List<Actuator> actuators = new ArrayList<Actuator>();
- 
+
 	private static boolean isFogDevice(String name){
 		for(FogDevice fogDevice : fogDevices){
 			if(fogDevice.getName().equalsIgnoreCase(name))
 				return true;
 		}
 		return false;
-		
+
 	}
-	
+
 	private static FogDevice getFogDevice(String name){
 		for(FogDevice fogDevice : fogDevices){
 			if(fogDevice.getName().equalsIgnoreCase(name))
@@ -53,7 +53,7 @@ public class JsonToTopology {
 		}
 		return null;
 	}
-	
+
 	private static boolean isActuator(String name){
 		for(Actuator actuator : actuators){
 			if(actuator.getName().equalsIgnoreCase(name))
@@ -61,7 +61,7 @@ public class JsonToTopology {
 		}
 		return false;
 	}
-	
+
 	private static Actuator getActuator(String name){
 		for(Actuator actuator : actuators){
 			if(actuator.getName().equalsIgnoreCase(name))
@@ -69,7 +69,7 @@ public class JsonToTopology {
 		}
 		return null;
 	}
-	
+
 	private static boolean isSensor(String name){
 		for(Sensor sensor : sensors){
 			if(sensor.getName().equalsIgnoreCase(name))
@@ -77,7 +77,7 @@ public class JsonToTopology {
 		}
 		return false;
 	}
-	
+
 	private static Sensor getSensor(String name){
 		for(Sensor sensor : sensors){
 			if(sensor.getName().equalsIgnoreCase(name))
@@ -85,24 +85,24 @@ public class JsonToTopology {
 		}
 		return null;
 	}
-	
+
 	public static PhysicalTopology getPhysicalTopology(int userId, String appId, String physicalTopologyFile) throws Exception{
-				
+
 		fogDevices = new ArrayList<FogDevice>();
 		sensors = new ArrayList<Sensor>();
 		actuators = new ArrayList<Actuator>();
-		
-		
+
+
 		try {
 			JSONObject doc = (JSONObject) JSONValue.parse(new FileReader(physicalTopologyFile));
     		JSONArray nodes = (JSONArray) doc.get("nodes");
     		@SuppressWarnings("unchecked")
-			Iterator<JSONObject> iter =nodes.iterator(); 
+			Iterator<JSONObject> iter =nodes.iterator();
 			while(iter.hasNext()){
 				JSONObject node = iter.next();
 				String nodeType = (String) node.get("type");
 				String nodeName = (String) node.get("name");
-				
+
 				if(nodeType.equalsIgnoreCase("FOG_DEVICE")){
 					long mips = (Long) node.get("mips");
 					int ram = new BigDecimal((Long)node.get("ram")).intValueExact();
@@ -110,10 +110,10 @@ public class JsonToTopology {
 					long downBw = new BigDecimal((Long)node.get("downBw")).intValueExact();
 					int level = new BigDecimal((Long)node.get("level")).intValue();
 					double ratePerMips = new BigDecimal((Double)node.get("ratePerMips")).doubleValue();
-					
+
 					FogDevice fogDevice = createFogDevice(nodeName, mips, ram, upBw, downBw, level, ratePerMips);
 					fogDevice.setParentId(-1);
-					
+
 					fogDevices.add(fogDevice);
 
 				} else if(nodeType.equals("SENSOR")){
@@ -123,10 +123,10 @@ public class JsonToTopology {
 					if(distType == Distribution.DETERMINISTIC)
 						distribution = new DeterministicDistribution(new BigDecimal((Double)node.get("value")).doubleValue());
 					else if(distType == Distribution.NORMAL){
-						distribution = new NormalDistribution(new BigDecimal((Double)node.get("mean")).doubleValue(), 
+						distribution = new NormalDistribution(new BigDecimal((Double)node.get("mean")).doubleValue(),
 								new BigDecimal((Double)node.get("stdDev")).doubleValue());
 					} else if(distType == Distribution.UNIFORM){
-						distribution = new UniformDistribution(new BigDecimal((Double)node.get("min")).doubleValue(), 
+						distribution = new UniformDistribution(new BigDecimal((Double)node.get("min")).doubleValue(),
 								new BigDecimal((Double)node.get("max")).doubleValue());
 					}
 					System.out.println("Sensor type : "+sensorType);
@@ -136,16 +136,16 @@ public class JsonToTopology {
 					actuators.add(new Actuator(nodeName, userId, appId, actuatorType));
 				}
 			}
-				
+
 			JSONArray links = (JSONArray) doc.get("links");
 			@SuppressWarnings("unchecked")
-			Iterator<JSONObject> linksIter =links.iterator(); 
+			Iterator<JSONObject> linksIter =links.iterator();
 			while(linksIter.hasNext()){
 				JSONObject link = linksIter.next();
-				String src = (String) link.get("source");  
+				String src = (String) link.get("source");
 				String dst = (String) link.get("destination");
 				double lat = (Double) link.get("latency");
-				
+
 				connectEntities(src, dst, lat);
 			}
 		} catch (FileNotFoundException e) {
@@ -159,7 +159,7 @@ public class JsonToTopology {
 	}
 	private static FogDevice createFogDevice(String nodeName, long mips,
 			int ram, long upBw, long downBw, int level, double ratePerMips) {
-		
+
 		List<Pe> peList = new ArrayList<Pe>();
 
 		// 3. Create PEs and add these into a list.
@@ -200,12 +200,12 @@ public class JsonToTopology {
 
 		FogDevice fogdevice = null;
 		try {
-			fogdevice = new FogDevice(nodeName, characteristics, 
-					new AppModuleAllocationPolicy(hostList), storageList, 10, upBw, downBw, 0, ratePerMips);
+			fogdevice = new FogDevice(nodeName, characteristics,
+					new AppModuleAllocationPolicy(hostList), storageList, 10, upBw, downBw, 0, ratePerMips, 5);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		fogdevice.setLevel(level);
 		return fogdevice;
 	}
@@ -239,6 +239,6 @@ public class JsonToTopology {
 			actuator.setLatency(lat);
 			actuator.setGatewayDeviceId(fogDevice.getId());
 		}
-		
-	}	
+
+	}
 }
