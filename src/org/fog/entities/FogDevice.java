@@ -30,18 +30,12 @@ import org.fog.application.AppModule;
 import org.fog.application.Application;
 import org.fog.policy.AppModuleAllocationPolicy;
 import org.fog.scheduler.StreamOperatorScheduler;
-import org.fog.utils.Config;
-import org.fog.utils.FogEvents;
-import org.fog.utils.FogUtils;
-import org.fog.utils.Logger;
-import org.fog.utils.ModuleLaunchConfig;
-import org.fog.utils.NetworkUsageMonitor;
-import org.fog.utils.TimeKeeper;
+import org.fog.utils.*;
 
 public class FogDevice extends PowerDatacenter {
 	protected Queue<Tuple> northTupleQueue;
 	protected Queue<Pair<Tuple, Integer>> southTupleQueue;
-	
+	protected Queue<Pair<Tuple, Integer>> neighborTupleQueue;
 	protected List<String> activeApplications;
 	
 	protected Map<String, Application> applicationMap;
@@ -68,7 +62,11 @@ public class FogDevice extends PowerDatacenter {
 	protected List<Integer> childrenIds;
 
 	protected Map<Integer, List<String>> childToOperatorsMap;
-	
+	/**
+	 * Flag denoting whether the link neighbor from this FogDevice is busy  @李凯
+	 */
+	protected boolean isNeighborBusy;
+
 	/**
 	 * Flag denoting whether the link southwards from this FogDevice is busy
 	 */
@@ -82,6 +80,9 @@ public class FogDevice extends PowerDatacenter {
 	protected double uplinkBandwidth;
 	protected double downlinkBandwidth;
 	protected double uplinkLatency;
+	//@李凯
+	protected double neighborLatency;
+	protected double neighborBandwidth;
 	protected List<Pair<Integer, Double>> associatedActuatorIds;
 	
 	protected double energyConsumption;
@@ -94,7 +95,13 @@ public class FogDevice extends PowerDatacenter {
 	protected double totalCost;
 	
 	protected Map<String, Map<String, Integer>> moduleInstanceCount;
-	
+
+	/**
+	 *自加NeighborInArea
+	 */
+	protected NeighborInArea selfInfo;
+	protected List<NeighborInArea> neighbors;
+
 	public FogDevice(
 			String name, 
 			FogDeviceCharacteristics characteristics,
@@ -279,6 +286,12 @@ public class FogDevice extends PowerDatacenter {
 		case FogEvents.LAUNCH_MODULE_INSTANCE:
 			updateModuleInstanceCount(ev);
 			break;
+		case FogEvents.NEIGHBOR_TUPLE_ARRIVE://发送至Neighbor
+			processTupleFromNeighbor(ev);
+			break;
+		case FogEvents.UPDATE_NEIGHBOR_TUPLE_QUEUE:
+			updateNeighborTupleQueue();
+			break;
 		case FogEvents.RESOURCE_MGMT:
 			manageResources(ev);
 		default:
@@ -327,7 +340,7 @@ public class FogDevice extends PowerDatacenter {
 		AppEdge edge = (AppEdge)ev.getData();
 		String srcModule = edge.getSource();
 		AppModule module = getModuleByName(srcModule);
-		
+
 		if(module == null)
 			return;
 		
@@ -486,6 +499,7 @@ public class FogDevice extends PowerDatacenter {
 		// WILL NEED TO CHECK IF A NEW LOOP STARTS AND INSERT A UNIQUE TUPLE ID TO IT.
 		String srcModule = resTuple.getSrcModuleName();
 		String destModule = resTuple.getDestModuleName();
+		//System.err.println("i'm used   "+getName()+ "  " + resTuple.getTupleType());
 		for(AppLoop loop : getApplicationMap().get(resTuple.getAppId()).getLoops()){
 			if(loop.hasEdge(srcModule, destModule) && loop.isStartModule(srcModule)){
 				int tupleId = TimeKeeper.getInstance().getUniqueId();
@@ -522,13 +536,17 @@ public class FogDevice extends PowerDatacenter {
 	protected void updateAllocatedMips(String incomingOperator){
 		getHost().getVmScheduler().deallocatePesForAllVms();
 		for(final Vm vm : getHost().getVmList()){
-			if(vm.getCloudletScheduler().runningCloudlets() > 0 || ((AppModule)vm).getName().equals(incomingOperator)){
+			if(vm.getCloudletScheduler().runningCloudlets() > 0 || ((AppModule)vm).getName().equals(incomingOperator)){//有任务在运行或者就是目标APPModule
+				//System.out.println("111111      "+getName()+"     "+ vm.getCloudletScheduler().runningCloudlets()+"  AppModule:"+((AppModule)vm).getName()+"  incomingOperator:"+incomingOperator);
 				getHost().getVmScheduler().allocatePesForVm(vm, new ArrayList<Double>(){
 					protected static final long serialVersionUID = 1L;
-				{add((double) getHost().getTotalMips());}});
+				{add((double) getHost().getTotalMips());
+
+				}});
 			}else{
+				//System.out.println("222222");
 				getHost().getVmScheduler().allocatePesForVm(vm, new ArrayList<Double>(){
-					protected static final long serialVersionUID = 1L;
+						protected static final long serialVersionUID = 1L;
 				{add(0.0);}});
 			}
 		}
@@ -615,10 +633,15 @@ public class FogDevice extends PowerDatacenter {
 	int numClients=0;
 	protected void processTupleArrival(SimEvent ev){
 		Tuple tuple = (Tuple)ev.getData();
-		
+
+		canBeProcessedBySelf(tuple);
+
 		if(getName().equals("cloud")){
 			updateCloudTraffic();
 		}
+		/*if(getName().startsWith("m")){
+			System.out.println(getName() + "    " + tuple.getDestModuleName());
+		}*/
 		
 		/*if(getName().equals("d-0") && tuple.getTupleType().equals("_SENSOR")){
 			System.out.println(++numClients);
@@ -721,7 +744,10 @@ public class FogDevice extends PowerDatacenter {
 	protected void executeTuple(SimEvent ev, String moduleName){
 		Logger.debug(getName(), "Executing tuple on module "+moduleName);
 		Tuple tuple = (Tuple)ev.getData();
-		
+		/*if(getName().startsWith("m")){
+			System.out.println("i'm used in m");
+		}*/
+
 		AppModule module = getModuleByName(moduleName);
 		
 		if(tuple.getDirection() == Tuple.UP){
@@ -793,9 +819,12 @@ public class FogDevice extends PowerDatacenter {
 		setNorthLinkBusy(true);
 		send(getId(), networkDelay, FogEvents.UPDATE_NORTH_TUPLE_QUEUE);
 		send(parentId, networkDelay+getUplinkLatency(), FogEvents.TUPLE_ARRIVAL, tuple);
+		//System.out.println("i'm used  "+networkDelay);
 		NetworkUsageMonitor.sendingTuple(getUplinkLatency(), tuple.getCloudletFileSize());
 	}
-	
+
+
+
 	protected void sendUp(Tuple tuple){
 		if(parentId > 0){
 			if(!isNorthLinkBusy()){
@@ -805,17 +834,16 @@ public class FogDevice extends PowerDatacenter {
 			}
 		}
 	}
-	
-	
+
 	protected void updateSouthTupleQueue(){
 		if(!getSouthTupleQueue().isEmpty()){
-			Pair<Tuple, Integer> pair = getSouthTupleQueue().poll(); 
+			Pair<Tuple, Integer> pair = getSouthTupleQueue().poll();
 			sendDownFreeLink(pair.getFirst(), pair.getSecond());
 		}else{
 			setSouthLinkBusy(false);
 		}
 	}
-	
+
 	protected void sendDownFreeLink(Tuple tuple, int childId){
 		double networkDelay = tuple.getCloudletFileSize()/getDownlinkBandwidth();
 		//Logger.debug(getName(), "Sending tuple with tupleType = "+tuple.getTupleType()+" DOWN");
@@ -835,8 +863,106 @@ public class FogDevice extends PowerDatacenter {
 			}
 		}
 	}
-	
-	
+
+	/**
+	 * @李凯
+	 */
+	protected void updateNeighborTupleQueue(){
+		if(!getNeighborTupleQueue().isEmpty()){
+			Pair<Tuple, Integer> pair = getNeighborTupleQueue().poll();
+			sendNeighborFreeLink(pair.getFirst(), pair.getSecond());
+		}else{
+			setNeighborBusy(false);
+		}
+	}
+
+	protected void sendNeighborFreeLink(Tuple tuple, int neighborId){
+		double networkDelay = tuple.getCloudletFileSize()/getNeighborBandwidth();
+		setNorthLinkBusy(true);
+		send(getId(), networkDelay, FogEvents.UPDATE_NORTH_TUPLE_QUEUE);
+		send(neighborId, networkDelay+getNeighborLatency(),FogEvents.NEIGHBOR_TUPLE_ARRIVE, tuple);
+		NetworkUsageMonitor.sendingTuple(getUplinkLatency(), tuple.getCloudletFileSize());
+	}
+
+	protected void sendNeighbor(Tuple tuple, int neighborId){
+		if(!isNeighborBusy()){
+			sendNeighborFreeLink(tuple, neighborId);
+		}else{
+			neighborTupleQueue.add(new Pair<Tuple, Integer>(tuple, neighborId));
+		}
+	}
+
+	/**
+	 * @likai
+	 *
+	 */
+
+	protected boolean canBeProcessedBySelf(Tuple tuple){
+		boolean canBe = false;
+
+		AppModule module = getModuleByName(tuple.getDestModuleName());
+		//Vm vmModule = new Vm();
+		for(final Vm vm :getHost().getVmList()){				//寻找该module
+			if(((AppModule)vm).getName().equals(tuple.getDestModuleName())){
+				int num = vm.getCloudletScheduler().runningCloudlets();
+				if(vm.getCloudletScheduler().runningCloudlets()<1){
+					return true;
+				}
+				double networkDelay = tuple.getCloudletFileSize()/getNeighborBandwidth();
+				double capacity = vm.getCloudletScheduler().getVmCapacity(getVmAllocationPolicy().getHost(module).getVmScheduler()
+						.getAllocatedMipsForVm(module));
+				double totalCapacity = getVmAllocationPolicy().getHost(module).getVmScheduler().getTotalAllocatedMipsForVm(module);
+				double predictTime = tuple.getCloudletLength() / capacity;
+				System.out.println(getName() + "   moduleName:"+ tuple.getDestModuleName() + "   capacity:  " + capacity + "   totalCapacity:" + totalCapacity + "  num:"+num + "  predictTime" + predictTime);
+				if(predictTime > 5*(networkDelay+getNeighborLatency())){
+					return false;
+				}
+				return true;
+			}
+		}
+		//vmModule.getCloudletScheduler().get
+
+		return canBe;
+	}
+
+
+
+	protected void sendTupleToNeighbor(Tuple tuple){
+		int neighborId = neighbors.get(0).getId();
+
+		sendNeighborFreeLink(tuple, neighborId);
+	}
+
+	protected void processTupleFromNeighbor(SimEvent ev){
+		int tupleNeighborid=ev.getSource();
+	}
+
+	protected double getPredictTime(Vm vm, double length, double fileSize, String moduleName){
+		AppModule module=getModuleByName(moduleName);
+		double networkDelay = fileSize/getNeighborBandwidth();
+		double capacity = vm.getCloudletScheduler().getVmCapacity(getVmAllocationPolicy().getHost(module).getVmScheduler()
+				.getAllocatedMipsForVm(module));
+		//double totalCapacity = getVmAllocationPolicy().getHost(module).getVmScheduler().getTotalAllocatedMipsForVm(module);
+		double predictTime =length/capacity;
+		return predictTime;
+	}
+
+	protected boolean canProcessNeighborTuple(double length, double fileSize, double prediceTimeOfSelf, String modulename){
+		double networkDelay = fileSize/getNeighborBandwidth();
+		AppModule module = getModuleByName(modulename);
+		for(final Vm vm :getHost().getVmList()){				//寻找该module
+			if(((AppModule)vm).getName().equals(modulename)){
+				if(getPredictTime(vm, length, fileSize, modulename)+networkDelay+getNeighborLatency()<prediceTimeOfSelf){
+					return true;
+				}else {
+					return false;
+				}
+			}
+		}
+		return false;
+	}
+
+
 	protected void sendToSelf(Tuple tuple){
 		send(getId(), CloudSim.getMinTimeBetweenEvents(), FogEvents.TUPLE_ARRIVAL, tuple);
 	}
@@ -861,6 +987,13 @@ public class FogDevice extends PowerDatacenter {
 	public void setUplinkBandwidth(double uplinkBandwidth) {
 		this.uplinkBandwidth = uplinkBandwidth;
 	}
+	public double getNeighborBandwidth(){return neighborBandwidth;}
+	public void setNeighborBandwidth(double neighborBandwidth){this.neighborBandwidth=neighborBandwidth;}
+
+	public double getNeighborLatency() {
+		return neighborLatency;
+	}
+
 	public double getUplinkLatency() {
 		return uplinkLatency;
 	}
@@ -873,11 +1006,17 @@ public class FogDevice extends PowerDatacenter {
 	public boolean isNorthLinkBusy() {
 		return isNorthLinkBusy;
 	}
+	public boolean isNeighborBusy() {
+		return isNeighborBusy;
+	}
 	public void setSouthLinkBusy(boolean isSouthLinkBusy) {
 		this.isSouthLinkBusy = isSouthLinkBusy;
 	}
 	public void setNorthLinkBusy(boolean isNorthLinkBusy) {
 		this.isNorthLinkBusy = isNorthLinkBusy;
+	}
+	public void setNeighborBusy(boolean isNeighborBusy){
+		this.isNeighborBusy = isNeighborBusy;
 	}
 	public int getControllerId() {
 		return controllerId;
@@ -916,6 +1055,10 @@ public class FogDevice extends PowerDatacenter {
 
 	public Queue<Pair<Tuple, Integer>> getSouthTupleQueue() {
 		return southTupleQueue;
+	}
+
+	public Queue<Pair<Tuple, Integer>> getNeighborTupleQueue(){
+		return neighborTupleQueue;
 	}
 
 	public void setSouthTupleQueue(Queue<Pair<Tuple, Integer>> southTupleQueue) {
@@ -984,4 +1127,25 @@ public class FogDevice extends PowerDatacenter {
 			Map<String, Map<String, Integer>> moduleInstanceCount) {
 		this.moduleInstanceCount = moduleInstanceCount;
 	}
+
+	/**
+	 * 自加
+	 */
+	public void setNeighbors(List<NeighborInArea> neighbors){
+		this.neighbors = neighbors;
+	}
+
+	public List<NeighborInArea> getNeighbors(){
+		return neighbors;
+	}
+
+	public void setSelfInfo(NeighborInArea selfInfo){
+		this.selfInfo = selfInfo;
+	}
+
+	public NeighborInArea getSelfInfo(){
+		return selfInfo;
+	}
+
+
 }

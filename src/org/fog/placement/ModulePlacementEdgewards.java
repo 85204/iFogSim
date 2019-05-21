@@ -85,6 +85,9 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 	 * @param placedModules Modules that have already been placed in current path
 	 * @return list of modules ready to be placed
 	 */
+	/**
+	通过底部Module搜寻未放置的Module
+	 */
 	private List<String> getModulesToPlace(List<String> placedModules){
 		Application app = getApplication();
 		List<String> modulesToPlace_1 = new ArrayList<String>();
@@ -153,32 +156,37 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 					}
 				}
 			}
-						
+			//device = getFogDeviceById(deviceId);
+			//System.out.println(device.getName() + "  " + appEdgeToRate);
 			/*
 			 * Updating the AppEdge rates for the entire application based on knowledge so far
 			 */
 			boolean changed = true;
 			while(changed){		//Loop runs as long as some new information is added
+				//System.out.println(device.getName());
 				changed=false;
 				Map<AppEdge, Double> rateMap = new HashMap<AppEdge, Double>(appEdgeToRate);
 				for(AppEdge edge : rateMap.keySet()){
 					AppModule destModule = getApplication().getModuleByName(edge.getDestination());
 					if(destModule == null)continue;
 					Map<Pair<String, String>, SelectivityModel> map = destModule.getSelectivityMap();
+					//System.out.println(deviceId+"  "+ map);
 					for(Pair<String, String> pair : map.keySet()){
 						if(pair.getFirst().equals(edge.getTupleType())){
 							double outputRate = appEdgeToRate.get(edge)*map.get(pair).getMeanRate(); // getting mean rate from SelectivityModel
 							AppEdge outputEdge = getApplication().getEdgeMap().get(pair.getSecond());
 							if(!appEdgeToRate.containsKey(outputEdge) || appEdgeToRate.get(outputEdge)!=outputRate){
 								// if some new information is available
+							//	System.out.println("edgetype:" + outputEdge + "   outputRate:" + outputRate);
 								changed = true;
 							}
 							appEdgeToRate.put(outputEdge, outputRate);
+							//System.out.println(appEdgeToRate);
 						}
 					}
 				}
 			}
-			
+			//System.out.println(appEdgeToRate);
 			/*
 			 * Getting the list of modules ready to be placed on current device on path
 			 */
@@ -200,9 +208,13 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 							if(edge.getDestination().equals(moduleName)){
 								double rate = appEdgeToRate.get(edge);
 								totalCpuLoad += rate*edge.getTupleCpuLength();
+								//System.out.println("rate:  " + rate + "    " + edge.getTupleType() + "   ");
+								//System.out.println("edgeType:"+edge.getDestination()+"   "+device.getName()+"   totalMips: "+device.getHost().getTotalMips()+"   totalCpuLoad:"+totalCpuLoad+"   currentCpuLoad:"+getCurrentCpuLoad().get(deviceId));
 							}
+
 						}
 						if(totalCpuLoad + getCurrentCpuLoad().get(deviceId) > device.getHost().getTotalMips()){
+							System.out.println("1111");
 							Logger.debug("ModulePlacementEdgeward", "Need to shift module "+moduleName+" upstream from device " + device.getName());
 							List<String> _placedOperators = shiftModuleNorth(moduleName, totalCpuLoad, deviceId, modulesToPlace);
 							for(String placedOperator : _placedOperators){
@@ -217,16 +229,20 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 						}
 					}
 				}else{
+
 					// FINDING OUT WHETHER PLACEMENT OF OPERATOR ON DEVICE IS POSSIBLE
 					for(AppEdge edge : getApplication().getEdges()){		// take all incoming edges
 						if(edge.getDestination().equals(moduleName)){
 							double rate = appEdgeToRate.get(edge);
 							totalCpuLoad += rate*edge.getTupleCpuLength();
+							System.out.println("edgeType:"+edge.getDestination()+"   rate:  "+rate+"   "+device.getName()+"   totalMips: "+device.getHost().getTotalMips()+"   totalCpuLoad:"+totalCpuLoad+"   currentCpuLoad:"+getCurrentCpuLoad().get(deviceId));
 						}
 					}
 						
 					if(totalCpuLoad + getCurrentCpuLoad().get(deviceId) > device.getHost().getTotalMips()){
 						Logger.debug("ModulePlacementEdgeward", "Placement of operator "+moduleName+ "NOT POSSIBLE on device "+device.getName());
+						System.out.println("ModulePlacementEdgeward"+"  Placement of operator "+moduleName+ "   NOT POSSIBLE on device "+device.getName()
+								+"  totalCpuLoad:"+totalCpuLoad+"  CurrentCpuLoad:"+getCurrentCpuLoad().get(deviceId));
 					}
 					else{
 						Logger.debug("ModulePlacementEdgeward", "Placement of operator "+moduleName+ " on device "+device.getName() + " successful.");
@@ -250,13 +266,14 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 						getCurrentModuleInstanceNum().get(deviceId).put(moduleName, max);
 					}
 				}
-			
-			
+
+
+
 				modulesToPlace.remove(moduleName);
 			}
 			
 		}
-		
+		//System.out.println(currentModuleMap);
 	}
 
 	/**

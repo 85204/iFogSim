@@ -19,7 +19,7 @@ import org.cloudbus.cloudsim.core.CloudSim;
  * We consider that file transfer from cloudlets waiting happens before cloudlet execution. I.e.,
  * even though cloudlets must wait for CPU, data transfer happens as soon as cloudlets are
  * submitted.
- * 
+ *
  * @author Rodrigo N. Calheiros
  * @author Anton Beloglazov
  * @since CloudSim Toolkit 1.0
@@ -47,7 +47,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 	/**
 	 * Creates a new CloudletSchedulerSpaceShared object. This method must be invoked before
 	 * starting the actual simulation.
-	 * 
+	 *
 	 * @pre $none
 	 * @post $none
 	 */
@@ -63,7 +63,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Updates the processing of cloudlets running under management of this scheduler.
-	 * 
+	 *
 	 * @param currentTime current simulation time
 	 * @param mipsShare array with MIPS share of each processor available to the scheduler
 	 * @return time predicted completion time of the earliest finishing cloudlet, or 0 if there is
@@ -149,7 +149,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Cancels execution of a cloudlet.
-	 * 
+	 *
 	 * @param cloudletId ID of the cloudlet being cancealed
 	 * @return the canceled cloudlet, $null if not found
 	 * @pre $none
@@ -201,7 +201,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Pauses execution of a cloudlet.
-	 * 
+	 *
 	 * @param cloudletId ID of the cloudlet being paused
 	 * @return $true if cloudlet paused, $false otherwise
 	 * @pre $none
@@ -263,7 +263,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Processes a finished cloudlet.
-	 * 
+	 *
 	 * @param rcl finished cloudlet
 	 * @pre rgl != $null
 	 * @post $none
@@ -278,7 +278,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Resumes execution of a paused cloudlet.
-	 * 
+	 *
 	 * @param cloudletId ID of the cloudlet being resumed
 	 * @return $true if the cloudlet was resumed, $false otherwise
 	 * @pre $none
@@ -352,7 +352,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Receives an cloudlet to be executed in the VM managed by this scheduler.
-	 * 
+	 *
 	 * @param cloudlet the submited cloudlet
 	 * @param fileTransferTime time required to move the required files from the SAN to the VM
 	 * @return expected finish time of this cloudlet, or 0 if it is in the waiting queue
@@ -410,7 +410,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Gets the status of a cloudlet.
-	 * 
+	 *
 	 * @param cloudletId ID of the cloudlet
 	 * @return status of the cloudlet, -1 if cloudlet not found
 	 * @pre $none
@@ -441,7 +441,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Get utilization created by all cloudlets.
-	 * 
+	 *
 	 * @param time the time
 	 * @return total utilization
 	 */
@@ -456,7 +456,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Informs about completion of some cloudlet in the VM managed by this scheduler.
-	 * 
+	 *
 	 * @return $true if there is at least one finished cloudlet; $false otherwise
 	 * @pre $none
 	 * @post $none
@@ -468,7 +468,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Returns the next cloudlet in the finished list, $null if this list is empty.
-	 * 
+	 *
 	 * @return a finished cloudlet
 	 * @pre $none
 	 * @post $none
@@ -483,7 +483,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Returns the number of cloudlets runnning in the virtual machine.
-	 * 
+	 *
 	 * @return number of cloudlets runnning
 	 * @pre $none
 	 * @post $none
@@ -495,7 +495,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Returns one cloudlet to migrate to another vm.
-	 * 
+	 *
 	 * @return one running cloudlet
 	 * @pre $none
 	 * @post $none
@@ -511,7 +511,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Gets the cloudlet waiting list.
-	 * 
+	 *
 	 * @param <T> the generic type
 	 * @return the cloudlet waiting list
 	 */
@@ -522,7 +522,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Cloudlet waiting list.
-	 * 
+	 *
 	 * @param <T> the generic type
 	 * @param cloudletWaitingList the cloudlet waiting list
 	 */
@@ -532,7 +532,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Gets the cloudlet exec list.
-	 * 
+	 *
 	 * @param <T> the generic type
 	 * @return the cloudlet exec list
 	 */
@@ -543,7 +543,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Sets the cloudlet exec list.
-	 * 
+	 *
 	 * @param <T> the generic type
 	 * @param cloudletExecList the new cloudlet exec list
 	 */
@@ -553,7 +553,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Gets the cloudlet paused list.
-	 * 
+	 *
 	 * @param <T> the generic type
 	 * @return the cloudlet paused list
 	 */
@@ -564,7 +564,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Sets the cloudlet paused list.
-	 * 
+	 *
 	 * @param <T> the generic type
 	 * @param cloudletPausedList the new cloudlet paused list
 	 */
@@ -574,7 +574,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Gets the cloudlet finished list.
-	 * 
+	 *
 	 * @param <T> the generic type
 	 * @return the cloudlet finished list
 	 */
@@ -585,7 +585,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 
 	/**
 	 * Sets the cloudlet finished list.
-	 * 
+	 *
 	 * @param <T> the generic type
 	 * @param cloudletFinishedList the new cloudlet finished list
 	 */
@@ -663,6 +663,16 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 	public double getCurrentRequestedUtilizationOfBw() {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+
+	/**
+	 * likai
+	 * @param mipsShare
+	 * @return
+	 */
+	@Override
+	public double getVmCapacity(List<Double> mipsShare){
+		return 0.0;
 	}
 
 }

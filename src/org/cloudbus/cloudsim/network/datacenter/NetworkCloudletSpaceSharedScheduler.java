@@ -794,4 +794,14 @@ public class NetworkCloudletSpaceSharedScheduler extends CloudletScheduler {
 		return 0;
 	}
 
+	/**
+	 * likai
+	 * @param mipsShare
+	 * @return
+	 */
+	@Override
+	public double getVmCapacity(List<Double> mipsShare){
+		return 0.0;
+	}
+
 }

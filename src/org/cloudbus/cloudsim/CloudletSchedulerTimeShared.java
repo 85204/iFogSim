@@ -129,13 +129,23 @@ public class CloudletSchedulerTimeShared extends CloudletScheduler {
 		for (ResCloudlet rcl : getCloudletExecList()) {
 			pesInUse += rcl.getNumberOfPes();
 		}
-
+		//System.out.println(pesInUse);
 		if (pesInUse > currentCPUs) {
 			capacity /= pesInUse;
 		} else {
 			capacity /= currentCPUs;
 		}
 		return capacity;
+	}
+
+	/**
+	 * likai
+	 * @param mipsShare
+	 * @return
+	 */
+	@Override
+	public double getVmCapacity(List<Double> mipsShare){
+		return getCapacity(mipsShare);
 	}
 
 	/**
@@ -303,7 +313,7 @@ public class CloudletSchedulerTimeShared extends CloudletScheduler {
 	 * @post $none
 	 */
 	@Override
-	public double cloudletSubmit(Cloudlet cloudlet, double fileTransferTime) {
+	public double cloudletSubmit(Cloudlet cloudlet, double fileTransferTime) {//计算预计时间
 		ResCloudlet rcl = new ResCloudlet(cloudlet);
 		rcl.setCloudletStatus(Cloudlet.INEXEC);
 		for (int i = 0; i < cloudlet.getNumberOfPes(); i++) {
@@ -315,8 +325,12 @@ public class CloudletSchedulerTimeShared extends CloudletScheduler {
 		// use the current capacity to estimate the extra amount of
 		// time to file transferring. It must be added to the cloudlet length
 		double extraSize = getCapacity(getCurrentMipsShare()) * fileTransferTime;
+		//System.out.println(extraSize);
 		long length = (long) (cloudlet.getCloudletLength() + extraSize);
 		cloudlet.setCloudletLength(length);
+		//System.out.println(getCapacity(getCurrentMipsShare()));
+		//System.out.println(getCurrentMipsShare());
+		//System.out.println(cloudlet.getCloudletLength()+"    "+cloudlet.getCloudletLength() / getCapacity(getCurrentMipsShare()));
 		return cloudlet.getCloudletLength() / getCapacity(getCurrentMipsShare());
 	}
 

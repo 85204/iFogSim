@@ -121,6 +121,14 @@ public abstract class CloudletScheduler {
 	public abstract int getCloudletStatus(int clId);
 
 	/**
+	 * get the capacity of vm
+	 * By likai
+	 * @param mipsShare
+	 * @return
+	 */
+	public abstract double  getVmCapacity(List<Double> mipsShare) ;
+
+	/**
 	 * Informs about completion of some cloudlet in the VM managed by this scheduler.
 	 * 
 	 * @return $true if there is at least one finished cloudlet; $false otherwise

@@ -135,6 +135,16 @@ public class DatacenterBroker extends SimEntity {
 		CloudletList.getById(getCloudletList(), cloudletId).setVmId(vmId);
 	}
 
+
+	public void bindCloudletsToSimple(){
+		int vmNum = vmList.size();
+		int cloudletNum = cloudletList.size();
+		int idx = 0 ;
+		for(int i=0; i<cloudletNum;i++){
+			cloudletList.get(i).setVmId(vmList.get(idx).getId());
+			idx=(idx+1)%vmNum;
+		}
+	}
 	/**
 	 * Processes events available for this Broker.
 	 * 

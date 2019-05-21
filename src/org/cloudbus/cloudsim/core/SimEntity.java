@@ -539,6 +539,7 @@ public abstract class SimEntity implements Cloneable {
 		int srcId = getId();
 		if (entityId != srcId) {// does not delay self messages
 			delay += getNetworkDelay(srcId, entityId);
+			//System.out.println("delay:" + delay);
 		}
 
 		schedule(entityId, delay, cloudSimTag, data);
@@ -674,6 +675,7 @@ public abstract class SimEntity implements Cloneable {
 	 */
 	private double getNetworkDelay(int src, int dst) {
 		if (NetworkTopology.isNetworkEnabled()) {
+			//System.out.println("i'm used");
 			return NetworkTopology.getDelay(src, dst);
 		}
 		return 0.0;

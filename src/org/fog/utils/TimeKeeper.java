@@ -48,6 +48,9 @@ public class TimeKeeper {
 			double currentAverage = tupleTypeToAverageCpuTime.get(tuple.getTupleType());
 			int currentCount = tupleTypeToExecutedTupleCount.get(tuple.getTupleType());
 			tupleTypeToAverageCpuTime.put(tuple.getTupleType(), (currentAverage*currentCount+executionTime)/(currentCount+1));
+			/*if(tuple.getTupleType().equals("OBJECT_LOCATION")){
+				System.out.println("OBJECT_LOCATION");
+			}*/
 		}
 	}
 	

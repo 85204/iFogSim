@@ -37,6 +37,7 @@ public class Tuple extends Cloudlet{
 		super(cloudletId, cloudletLength, pesNumber, cloudletFileSize,
 				cloudletOutputSize, utilizationModelCpu, utilizationModelRam,
 				utilizationModelBw);
+		//System.out.println("cloudletFileSize   " + cloudletFileSize);
 		setAppId(appId);
 		setDirection(direction);
 		setSourceDeviceId(-1);

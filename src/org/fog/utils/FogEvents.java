@@ -28,4 +28,8 @@ public class FogEvents {
 	public static final int RESOURCE_MGMT = BASE+24;
 	public static final int INITIALIZE_SENSOR = BASE+24;
 	public static final int EMIT_TUPLE = BASE+25;
+	public static final int UPDATE_NEIGHBOR_TUPLE_QUEUE = BASE+26;
+	public static final int NEIGHBOR_TUPLE_ARRIVE = BASE+27;
+	public static final int ACK_NEIGHBOR = BASE+28;
+	public static final int ANSWER_NEIGHBOR = BASE+29;
 }

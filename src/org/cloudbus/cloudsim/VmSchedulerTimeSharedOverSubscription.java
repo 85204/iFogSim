@@ -70,7 +70,7 @@ public class VmSchedulerTimeSharedOverSubscription extends VmSchedulerTimeShared
 			// the destination host only experience 10% of the migrating VM's MIPS
 			totalRequestedMips *= 0.1;
 		}
-
+		//System.out.println("availableMips:"+getAvailableMips());
 		if (getAvailableMips() >= totalRequestedMips) {
 			List<Double> mipsShareAllocated = new ArrayList<Double>();
 			for (Double mipsRequested : mipsShareRequestedCapped) {

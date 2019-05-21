@@ -721,7 +721,11 @@ public class Datacenter extends SimEntity {
 			double estimatedFinishTime = scheduler.cloudletSubmit(cl, fileTransferTime);
 			
 			// if this cloudlet is in the exec queue
+			/*if(getName().startsWith("m")) {
+				System.out.println("in DataCenter   estimatedFinishTime:" + estimatedFinishTime + "    " + getName());
+			}*/
 			if (estimatedFinishTime > 0.0 && !Double.isInfinite(estimatedFinishTime)) {
+
 				estimatedFinishTime += fileTransferTime;
 				/*	edited by HARSHIT	*/
 				//if(getName().equals("gateway-3"))

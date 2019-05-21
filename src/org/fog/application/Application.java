@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.math3.util.Pair;
+import org.cloudbus.cloudsim.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.UtilizationModelFull;
 import org.fog.application.selectivity.SelectivityModel;
 import org.fog.entities.Tuple;
@@ -63,7 +64,7 @@ public class Application {
 		String vmm = "Xen";
 		
 		AppModule module = new AppModule(FogUtils.generateEntityId(), moduleName, appId, userId, 
-				mips, ram, bw, size, vmm, new TupleScheduler(mips, 1), new HashMap<Pair<String, String>, SelectivityModel>());
+				mips, ram, bw, size, vmm, new TupleScheduler(mips, 2), new HashMap<Pair<String, String>, SelectivityModel>());
 		
 		getModules().add(module);
 		
@@ -184,6 +185,7 @@ public class Application {
 				SelectivityModel selectivityModel = module.getSelectivityMap().get(pair);
 				if(selectivityModel.canSelect()){
 					//TODO check if the edge is ACTUATOR, then create multiple tuples
+					//System.err.println("i'mused     " + inputTuple.getTupleType());
 					if(edge.getEdgeType() == AppEdge.ACTUATOR){
 						//for(Integer actuatorId : module.getActuatorSubscriptions().get(edge.getTupleType())){
 							Tuple tuple = new Tuple(appId, FogUtils.generateTupleId(), edge.getDirection(),  
@@ -228,6 +230,7 @@ public class Application {
 						tuple.setSourceModuleId(sourceModuleId);
 
 						tuples.add(tuple);
+						//System.err.println("i'm used     " + tuple.getTupleType()+ "   11111111111");
 					}
 				}
 			}
