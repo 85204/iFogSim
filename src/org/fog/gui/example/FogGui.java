@@ -400,7 +400,7 @@ public class FogGui extends JFrame {
 		    	    	
 		    	    	mode = "i";
 		    	    }
-		    	    //System.out.println(e.getActionCommand());
+		    	    //System.out.anotherMobile(e.getActionCommand());
 		        } catch (Exception ex) {
 		            ex.printStackTrace();
 		        }

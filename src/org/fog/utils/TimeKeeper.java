@@ -28,6 +28,10 @@ public class TimeKeeper {
 			instance = new TimeKeeper();
 		return instance;
 	}
+
+	public static void destroyInstance() {
+		instance = null;
+	}
 	
 	public int getUniqueId(){
 		return count++;

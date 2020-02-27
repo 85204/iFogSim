@@ -15,6 +15,7 @@ import org.fog.application.Application;
 import org.fog.entities.Actuator;
 import org.fog.entities.FogDevice;
 import org.fog.entities.Sensor;
+import org.fog.test.Configs;
 import org.fog.utils.Config;
 import org.fog.utils.FogEvents;
 import org.fog.utils.FogUtils;
@@ -101,9 +102,41 @@ public class Controller extends SimEntity{
 			CloudSim.stopSimulation();
 			printTimeDetails();
 			printPowerDetails();
+			double power = printPowerAll();
 			printCostDetails();
 			printNetworkUsageDetails();
-			System.exit(0);
+			double result = 0;
+			for(Integer loopId : TimeKeeper.getInstance().getLoopIdToTupleIds().keySet()){
+				result = TimeKeeper.getInstance().getLoopIdToCurrentAverage().get(loopId);
+			}
+			TimeKeeper.destroyInstance();
+			if (Configs.a <= 0) {
+				Configs.a = result;
+				Configs.aP = power;
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.out.printf("%.2f", Configs.aP / 10000);
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.out.println(Configs.a);
+				System.exit(0);
+//				System.out.println(Configs.b);
+//				Configs.another();
+			} else {
+				Configs.b = result;
+				Configs.bP = power;
+				System.out.println("a: " + Configs.a + "  b:" + Configs.b);
+//				System.out.println("aP: " + Configs.aP + "  bP:" + Configs.bP);
+
+				System.out.printf("aP : %.2f * 10000 bP : %.2f * 10000 \n", Configs.aP / 10000, (Configs.bP - Configs.aP) / 10000);
+				System.exit(0);
+			}
 			break;
 			
 		}
@@ -130,6 +163,17 @@ public class Controller extends SimEntity{
 		}
 	}
 
+	private double printPowerAll() {
+		double sumPower = 0;
+		for(FogDevice fogDevice : getFogDevices()) {
+			if (fogDevice.getName().startsWith("_mobile") || fogDevice.getName().startsWith("mobile")) {
+				sumPower += fogDevice.getEnergyConsumption();
+			}
+		}
+		System.out.printf("All mobile : Energy Consumed = %.2f * 10000\n", sumPower / 10000);
+		return sumPower;
+	}
+
 	private String getStringForLoopId(int loopId){
 		for(String appId : getApplications().keySet()){
 			Application app = getApplications().get(appId);
@@ -149,16 +193,6 @@ public class Controller extends SimEntity{
 		System.out.println("APPLICATION LOOP DELAYS");
 		System.out.println("=========================================");
 		for(Integer loopId : TimeKeeper.getInstance().getLoopIdToTupleIds().keySet()){
-			/*double average = 0, count = 0;
-			for(int tupleId : TimeKeeper.getInstance().getLoopIdToTupleIds().get(loopId)){
-				Double startTime = 	TimeKeeper.getInstance().getEmitTimes().get(tupleId);
-				Double endTime = 	TimeKeeper.getInstance().getEndTimes().get(tupleId);
-				if(startTime == null || endTime == null)
-					break;
-				average += endTime-startTime;
-				count += 1;
-			}
-			System.out.println(getStringForLoopId(loopId) + " ---> "+(average/count));*/
 			System.out.println(getStringForLoopId(loopId) + " ---> "+TimeKeeper.getInstance().getLoopIdToCurrentAverage().get(loopId));
 		}
 		System.out.println("=========================================");

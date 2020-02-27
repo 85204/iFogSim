@@ -1,7 +1,5 @@
 package org.fog.entities;
 
-import java.util.ArrayList;
-
 import org.cloudbus.cloudsim.UtilizationModelFull;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.SimEntity;
@@ -9,16 +7,15 @@ import org.cloudbus.cloudsim.core.SimEvent;
 import org.fog.application.AppEdge;
 import org.fog.application.AppLoop;
 import org.fog.application.Application;
-import org.fog.utils.FogEvents;
-import org.fog.utils.FogUtils;
-import org.fog.utils.GeoLocation;
-import org.fog.utils.Logger;
-import org.fog.utils.TimeKeeper;
+import org.fog.utils.*;
 import org.fog.utils.distribution.Distribution;
 
-public class Sensor extends SimEntity{
-	
+import java.util.ArrayList;
+
+public class Sensor extends SimEntity {
+
 	private int gatewayDeviceId;
+//	public int useOriginal;
 	private GeoLocation geoLocation;
 	private long outputSize;
 	private String appId;
@@ -30,9 +27,9 @@ public class Sensor extends SimEntity{
 	private int controllerId;
 	private Application app;
 	private double latency;
-	
-	public Sensor(String name, int userId, String appId, int gatewayDeviceId, double latency, GeoLocation geoLocation, 
-			Distribution transmitDistribution, int cpuLength, int nwLength, String tupleType, String destModuleName) {
+
+	public Sensor(String name, int userId, String appId, int gatewayDeviceId, double latency, GeoLocation geoLocation,
+								Distribution transmitDistribution, int cpuLength, int nwLength, String tupleType, String destModuleName) {
 		super(name);
 		this.setAppId(appId);
 		this.gatewayDeviceId = gatewayDeviceId;
@@ -45,9 +42,9 @@ public class Sensor extends SimEntity{
 		setSensorName(sensorName);
 		setLatency(latency);
 	}
-	
-	public Sensor(String name, int userId, String appId, int gatewayDeviceId, double latency, GeoLocation geoLocation, 
-			Distribution transmitDistribution, String tupleType) {
+
+	public Sensor(String name, int userId, String appId, int gatewayDeviceId, double latency, GeoLocation geoLocation,
+								Distribution transmitDistribution, String tupleType) {
 		super(name);
 		this.setAppId(appId);
 		this.gatewayDeviceId = gatewayDeviceId;
@@ -59,12 +56,12 @@ public class Sensor extends SimEntity{
 		setSensorName(sensorName);
 		setLatency(latency);
 	}
-	
+
 	/**
 	 * This constructor is called from the code that generates PhysicalTopology from JSON
+	 *
 	 * @param name
 	 * @param tupleType
-	 * @param string 
 	 * @param userId
 	 * @param appId
 	 * @param transmitDistribution
@@ -76,39 +73,48 @@ public class Sensor extends SimEntity{
 		setTupleType(tupleType);
 		setSensorName(tupleType);
 		setUserId(userId);
+//		if (Math.random() > 0.5) {
+//			this.useOriginal = 1;
+//		} else {
+//			this.useOriginal = 0;
+//		}
 	}
-	
-	public void transmit(){
+
+	public void transmit() {
 		AppEdge _edge = null;
-		for(AppEdge edge : getApp().getEdges()){
-			if(edge.getSource().equals(getTupleType()))
+		for (AppEdge edge : getApp().getEdges()) {
+			if (edge.getSource().equals(getTupleType()))
 				_edge = edge;
 		}
 		long cpuLength = (long) _edge.getTupleCpuLength();
 		long nwLength = (long) _edge.getTupleNwLength();
-		
-		Tuple tuple = new Tuple(getAppId(), FogUtils.generateTupleId(), Tuple.UP, cpuLength, 1, nwLength, outputSize, 
-				new UtilizationModelFull(), new UtilizationModelFull(), new UtilizationModelFull());
+
+		Tuple tuple = new Tuple(getAppId(), FogUtils.generateTupleId(), Tuple.UP, cpuLength, 1, nwLength, outputSize,
+						new UtilizationModelFull(), new UtilizationModelFull(), new UtilizationModelFull(), 20000);
 		tuple.setUserId(getUserId());
 		tuple.setTupleType(getTupleType());
-		
+
 		tuple.setDestModuleName(_edge.getDestination());
 		tuple.setSrcModuleName(getSensorName());
-		Logger.debug(getName(), "Sending tuple with tupleId = "+tuple.getCloudletId());
+		Logger.debug(getName(), "Sending tuple with tupleId = " + tuple.getCloudletId());
 
 		int actualTupleId = updateTimings(getSensorName(), tuple.getDestModuleName());
 		tuple.setActualTupleId(actualTupleId);
-		
-		send(gatewayDeviceId, getLatency(), FogEvents.TUPLE_ARRIVAL,tuple);
+
+//		if (this.useOriginal == 1){
+//			send(anotherGatewayDeviceId, getLatency(), FogEvents.TUPLE_ARRIVAL, tuple);
+//		} else
+		send(gatewayDeviceId, getLatency(), FogEvents.TUPLE_ARRIVAL, tuple);
+		// 发送任务 ！！！！
 	}
-	
-	private int updateTimings(String src, String dest){
+
+	private int updateTimings(String src, String dest) {
 		Application application = getApp();
-		for(AppLoop loop : application.getLoops()){
-			if(loop.hasEdge(src, dest)){
-				
+		for (AppLoop loop : application.getLoops()) {
+			if (loop.hasEdge(src, dest)) {
+
 				int tupleId = TimeKeeper.getInstance().getUniqueId();
-				if(!TimeKeeper.getInstance().getLoopIdToTupleIds().containsKey(loop.getLoopId()))
+				if (!TimeKeeper.getInstance().getLoopIdToTupleIds().containsKey(loop.getLoopId()))
 					TimeKeeper.getInstance().getLoopIdToTupleIds().put(loop.getLoopId(), new ArrayList<Integer>());
 				TimeKeeper.getInstance().getLoopIdToTupleIds().get(loop.getLoopId()).add(tupleId);
 				TimeKeeper.getInstance().getEmitTimes().put(tupleId, CloudSim.clock());
@@ -117,30 +123,35 @@ public class Sensor extends SimEntity{
 		}
 		return -1;
 	}
-	
+
 	@Override
 	public void startEntity() {
-		send(gatewayDeviceId, CloudSim.getMinTimeBetweenEvents(), FogEvents.SENSOR_JOINED, geoLocation);
+//		if (this.useOriginal == 1){
+//			send(anotherGatewayDeviceId, CloudSim.getMinTimeBetweenEvents(), FogEvents.SENSOR_JOINED, geoLocation);
+//		} else
+			send(gatewayDeviceId, CloudSim.getMinTimeBetweenEvents(), FogEvents.SENSOR_JOINED, geoLocation);
+			// 发送初始任务
 		send(getId(), getTransmitDistribution().getNextValue(), FogEvents.EMIT_TUPLE);
 	}
 
 	@Override
 	public void processEvent(SimEvent ev) {
-		switch(ev.getTag()){
-		case FogEvents.TUPLE_ACK:
-			//transmit(transmitDistribution.getNextValue());
-			break;
-		case FogEvents.EMIT_TUPLE:
-			transmit();
-			send(getId(), getTransmitDistribution().getNextValue(), FogEvents.EMIT_TUPLE);
-			break;
+		switch (ev.getTag()) {
+			case FogEvents.TUPLE_ACK:
+				//transmit(transmitDistribution.getNextValue());
+				break;
+			case FogEvents.EMIT_TUPLE:
+				// 不一定稳定的时钟周期触发 tuple 任务
+				transmit();
+				// 发送下一次的任务
+				send(getId(), getTransmitDistribution().getNextValue(), FogEvents.EMIT_TUPLE);
+				break;
 		}
-			
 	}
 
 	@Override
 	public void shutdownEntity() {
-		
+
 	}
 
 	public int getGatewayDeviceId() {

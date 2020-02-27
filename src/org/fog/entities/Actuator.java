@@ -19,7 +19,7 @@ public class Actuator extends SimEntity{
 	private int userId;
 	private String actuatorType;
 	private Application app;
-	
+
 	public Actuator(String name, int userId, String appId, int gatewayDeviceId, double latency, GeoLocation geoLocation, String actuatorType, String srcModuleName) {
 		super(name);
 		this.setAppId(appId);

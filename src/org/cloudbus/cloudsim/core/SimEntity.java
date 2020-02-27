@@ -518,6 +518,18 @@ public abstract class SimEntity implements Cloneable {
 	 * @post $none
 	 */
 	protected void send(int entityId, double delay, int cloudSimTag, Object data) {
+		send(getId(), entityId, delay, cloudSimTag, data);
+	}
+
+	/**
+	 * srcId can be provided
+	 * @param srcId
+	 * @param entityId
+	 * @param delay
+	 * @param cloudSimTag
+	 * @param data
+	 */
+	protected void send(int srcId, int entityId, double delay, int cloudSimTag, Object data) {
 		if (entityId < 0) {
 			return;
 		}
@@ -536,7 +548,6 @@ public abstract class SimEntity implements Cloneable {
 			return;
 		}
 
-		int srcId = getId();
 		if (entityId != srcId) {// does not delay self messages
 			delay += getNetworkDelay(srcId, entityId);
 		}

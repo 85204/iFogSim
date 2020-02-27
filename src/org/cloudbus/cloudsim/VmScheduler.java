@@ -42,6 +42,8 @@ public abstract class VmScheduler {
 	/** The VMs migrating out. */
 	private List<String> vmsMigratingOut;
 
+	public String name = "";
+
 	/**
 	 * Creates a new HostAllocationPolicy.
 	 * 

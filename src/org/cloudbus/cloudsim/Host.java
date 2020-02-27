@@ -227,6 +227,8 @@ public class Host {
 			return false;
 		}
 
+		getVmScheduler().deallocatePesForVm(vm);
+
 		setStorage(getStorage() - vm.getSize());
 		getVmList().add(vm);
 		vm.setHost(this);

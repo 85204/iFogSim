@@ -3,6 +3,7 @@ package org.fog.utils;
 public class Config {
 
 	public static final double RESOURCE_MGMT_INTERVAL = 100;
+	// 到达 结束时间 发送停止信号
 	public static int MAX_SIMULATION_TIME = 10000;
 	public static int RESOURCE_MANAGE_INTERVAL = 100;
 	public static String FOG_DEVICE_ARCH = "x86";

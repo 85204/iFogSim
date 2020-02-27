@@ -193,7 +193,8 @@ public class Application {
 									inputTuple.getCloudletOutputSize(),
 									inputTuple.getUtilizationModelCpu(),
 									inputTuple.getUtilizationModelRam(),
-									inputTuple.getUtilizationModelBw()
+									inputTuple.getUtilizationModelBw(),
+											inputTuple.getMaxTolerateDelay()
 									);
 							tuple.setActualTupleId(inputTuple.getActualTupleId());
 							tuple.setUserId(inputTuple.getUserId());
@@ -216,8 +217,9 @@ public class Application {
 								inputTuple.getCloudletOutputSize(),
 								inputTuple.getUtilizationModelCpu(),
 								inputTuple.getUtilizationModelRam(),
-								inputTuple.getUtilizationModelBw()
-								);
+								inputTuple.getUtilizationModelBw(),
+										inputTuple.getMaxTolerateDelay()
+						);
 						tuple.setActualTupleId(inputTuple.getActualTupleId());
 						tuple.setUserId(inputTuple.getUserId());
 						tuple.setAppId(inputTuple.getAppId());
@@ -252,8 +254,9 @@ public class Application {
 						100,
 						new UtilizationModelFull(), 
 						new UtilizationModelFull(), 
-						new UtilizationModelFull()
-						);
+						new UtilizationModelFull(),
+								100
+				);
 				tuple.setUserId(getUserId());
 				tuple.setAppId(getAppId());
 				tuple.setDestModuleName(edge.getDestination());
@@ -274,7 +277,8 @@ public class Application {
 					100,
 					new UtilizationModelFull(), 
 					new UtilizationModelFull(), 
-					new UtilizationModelFull()
+					new UtilizationModelFull(),
+							100
 					);
 			//tuple.setActualTupleId(inputTuple.getActualTupleId());
 			tuple.setUserId(getUserId());

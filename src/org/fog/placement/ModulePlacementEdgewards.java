@@ -1,9 +1,6 @@
 package org.fog.placement;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.math3.util.Pair;
 import org.cloudbus.cloudsim.core.CloudSim;
@@ -57,7 +54,7 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 	
 	@Override
 	protected void mapModules() {
-		
+		// 初始化 手动设置的 modules
 		for(String deviceName : getModuleMapping().getModuleMapping().keySet()){
 			for(String moduleName : getModuleMapping().getModuleMapping().get(deviceName)){
 				int deviceId = CloudSim.getEntityId(deviceName);
@@ -66,7 +63,7 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 				getCurrentModuleInstanceNum().get(deviceId).put(moduleName, 0);
 			}
 		}
-		
+		// 获取全部叶子路径
 		List<List<Integer>> leafToRootPaths = getLeafToRootPaths();
 		
 		for(List<Integer> path : leafToRootPaths){

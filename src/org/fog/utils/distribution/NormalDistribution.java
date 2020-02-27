@@ -2,20 +2,22 @@ package org.fog.utils.distribution;
 
 import java.util.Random;
 
-public class NormalDistribution extends Distribution{
+public class NormalDistribution extends Distribution {
 
 	private double mean;
 	private double stdDev;
-	
+
 	public NormalDistribution(double mean, double stdDev) {
 		setMean(mean);
 		setStdDev(stdDev);
 		setRandom(new Random());
 	}
-	
+
 	@Override
 	public double getNextValue() {
-		return random.nextGaussian()*stdDev + mean;
+		double value = random.nextGaussian() * stdDev + mean;
+		System.out.println(value);
+		return value;
 	}
 
 	public double getMean() {
@@ -33,7 +35,7 @@ public class NormalDistribution extends Distribution{
 	public void setStdDev(double stdDev) {
 		this.stdDev = stdDev;
 	}
-	
+
 	@Override
 	public int getDistributionType() {
 		return Distribution.NORMAL;

@@ -22,6 +22,7 @@ public class Tuple extends Cloudlet{
 	private int actuatorId;
 	private int sourceDeviceId;
 	private int sourceModuleId;
+	private long maxTolerateDelay;
 	/**
 	 * Map to keep track of which module instances has a tuple traversed.
 	 * 
@@ -33,7 +34,8 @@ public class Tuple extends Cloudlet{
 			long cloudletFileSize, long cloudletOutputSize,
 			UtilizationModel utilizationModelCpu,
 			UtilizationModel utilizationModelRam,
-			UtilizationModel utilizationModelBw) {
+			UtilizationModel utilizationModelBw,
+			long maxTolerateDelay) {
 		super(cloudletId, cloudletLength, pesNumber, cloudletFileSize,
 				cloudletOutputSize, utilizationModelCpu, utilizationModelRam,
 				utilizationModelBw);
@@ -41,6 +43,7 @@ public class Tuple extends Cloudlet{
 		setDirection(direction);
 		setSourceDeviceId(-1);
 		setModuleCopyMap(new HashMap<String, Integer>());
+		setMaxTolerateDelay(maxTolerateDelay);
 	}
 
 	public int getActualTupleId() {
@@ -123,4 +126,11 @@ public class Tuple extends Cloudlet{
 		this.sourceModuleId = sourceModuleId;
 	}
 
+	public long getMaxTolerateDelay() {
+		return maxTolerateDelay;
+	}
+
+	public void setMaxTolerateDelay(long maxTolerateDelay) {
+		this.maxTolerateDelay = maxTolerateDelay;
+	}
 }
