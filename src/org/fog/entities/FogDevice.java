@@ -26,6 +26,7 @@ public class FogDevice extends PowerDatacenter {
 	public List<FogDevice> fogDevices;
 	public FogDevice anotherMobile;
 	public int taskNum = 0;
+	public double transmitPower;
 	protected Queue<Tuple> northTupleQueue;
 	protected Queue<Pair<Tuple, Integer>> southTupleQueue;
 	protected List<String> activeApplications;
@@ -66,8 +67,62 @@ public class FogDevice extends PowerDatacenter {
 	protected double ratePerMips;
 	protected double totalCost;
 	protected Map<String, Map<String, Integer>> moduleInstanceCount;
-	int numClients = 0;
 	private int level;
+
+	@Deprecated
+	public FogDevice(
+					String name,
+					FogDeviceCharacteristics characteristics,
+					VmAllocationPolicy vmAllocationPolicy,
+					List<Storage> storageList,
+					double schedulingInterval,
+					double uplinkBandwidth, double downlinkBandwidth, double uplinkLatency, double ratePerMips, List<FogDevice> fogDevices) throws Exception {
+		super(name, characteristics, vmAllocationPolicy, storageList, schedulingInterval);
+		setCharacteristics(characteristics);
+		setVmAllocationPolicy(vmAllocationPolicy);
+		setLastProcessTime(0.0);
+		setStorageList(storageList);
+		setVmList(new ArrayList<Vm>());
+		setSchedulingInterval(schedulingInterval);
+		setUplinkBandwidth(uplinkBandwidth);
+		setDownlinkBandwidth(downlinkBandwidth);
+		setUplinkLatency(uplinkLatency);
+		this.fogDevices = fogDevices;
+		setRatePerMips(ratePerMips);
+		setAssociatedActuatorIds(new ArrayList<Pair<Integer, Double>>());
+		for (Host host : getCharacteristics().getHostList()) {
+			host.setDatacenter(this);
+		}
+		setActiveApplications(new ArrayList<String>());
+		// If this resource doesn't have any PEs then no useful at all
+		if (getCharacteristics().getNumberOfPes() == 0) {
+			throw new Exception(super.getName()
+							+ " : Error - this entity has no PEs. Therefore, can't process any Cloudlets.");
+		}
+		// stores id of this class
+		getCharacteristics().setId(super.getId());
+
+		applicationMap = new HashMap<String, Application>();
+		appToModulesMap = new HashMap<String, List<String>>();
+		northTupleQueue = new LinkedList<Tuple>();
+		southTupleQueue = new LinkedList<Pair<Tuple, Integer>>();
+		setNorthLinkBusy(false);
+		setSouthLinkBusy(false);
+
+
+		setChildrenIds(new ArrayList<Integer>());
+		setChildToOperatorsMap(new HashMap<Integer, List<String>>());
+
+		this.cloudTrafficMap = new HashMap<Integer, Integer>();
+
+		this.lockTime = 0;
+
+		this.energyConsumption = 0;
+		this.lastUtilization = 0;
+		setTotalCost(0);
+		setModuleInstanceCount(new HashMap<String, Map<String, Integer>>());
+		setChildToLatencyMap(new HashMap<Integer, Double>());
+	}
 
 	public FogDevice(
 					String name,
@@ -75,7 +130,7 @@ public class FogDevice extends PowerDatacenter {
 					VmAllocationPolicy vmAllocationPolicy,
 					List<Storage> storageList,
 					double schedulingInterval,
-					double uplinkBandwidth, double downlinkBandwidth, double uplinkLatency, double ratePerMips, double wakeupLatency, List<FogDevice> fogDevices) throws Exception {
+					double uplinkBandwidth, double downlinkBandwidth, double uplinkLatency, double ratePerMips, double wakeupLatency, List<FogDevice> fogDevices, double transmitPower) throws Exception {
 		super(name, characteristics, vmAllocationPolicy, storageList, schedulingInterval);
 		setCharacteristics(characteristics);
 		setVmAllocationPolicy(vmAllocationPolicy);
@@ -88,6 +143,7 @@ public class FogDevice extends PowerDatacenter {
 		setUplinkLatency(uplinkLatency);
 		this.wakeupLatency = wakeupLatency;
 		this.fogDevices = fogDevices;
+		this.transmitPower = transmitPower;
 		setRatePerMips(ratePerMips);
 		setAssociatedActuatorIds(new ArrayList<Pair<Integer, Double>>());
 		for (Host host : getCharacteristics().getHostList()) {
@@ -427,11 +483,11 @@ public class FogDevice extends PowerDatacenter {
 		return minTime;
 	}
 
+	// 更新全局所有任务的完成态
 	protected void checkCloudletCompletion() {
 		boolean cloudletCompleted = false;
 		List<? extends Host> list = getVmAllocationPolicy().getHostList();
-		for (int i = 0; i < list.size(); i++) {
-			Host host = list.get(i);
+		for (Host host : list) {
 			for (Vm vm : host.getVmList()) {
 				while (vm.getCloudletScheduler().isFinishedCloudlets()) {
 					Cloudlet cl = vm.getCloudletScheduler().getNextFinishedCloudlet();
@@ -448,6 +504,7 @@ public class FogDevice extends PowerDatacenter {
 							resTuple.getModuleCopyMap().put(((AppModule) vm).getName(), vm.getId());
 							updateTimingsOnSending(resTuple);
 							sendToSelf(resTuple);
+							// 发给自己是为了触发 TUPLE_ARRIVAL 事件
 						}
 						sendNow(cl.getUserId(), CloudSimTags.CLOUDLET_RETURN, cl);
 					}
@@ -497,18 +554,21 @@ public class FogDevice extends PowerDatacenter {
 		return -1;
 	}
 
+	// 找到参数内指定的这个任务，将全部资源分配给它
 	protected void updateAllocatedMips(String incomingOperator) {
 		getHost().getVmScheduler().deallocatePesForAllVms();
 
 		for (final Vm vm : getHost().getVmList()) {
 			if (vm.getCloudletScheduler().runningCloudlets() > 0 || ((AppModule) vm).getName().equals(incomingOperator)) {
-				getHost().getVmScheduler().allocatePesForVm(vm, new ArrayList<Double>() {
+				boolean isSuccess = getHost().getVmScheduler().allocatePesForVm(vm, new ArrayList<Double>() {
 					protected static final long serialVersionUID = 1L;
 
 					{
+						// 这里就是放置了全部的MIPS资源，必须小于最大mips，否则不成功卸载
 						add((double) getHost().getTotalMips());
 					}
 				});
+				System.out.println("是否成功分配计算资源" + isSuccess);
 			} else {
 				getHost().getVmScheduler().allocatePesForVm(vm, new ArrayList<Double>() {
 					protected static final long serialVersionUID = 1L;
@@ -534,25 +594,13 @@ public class FogDevice extends PowerDatacenter {
 			operator.updateVmProcessing(CloudSim.clock(), getVmAllocationPolicy().getHost(operator).getVmScheduler()
 							.getAllocatedMipsForVm(operator));
 			totalMipsAllocated += getHost().getTotalAllocatedMipsForVm(vm);
-//			if (name.startsWith("_mobile") && totalMipsAllocated != 0){
-//				System.err.println(((AppModule) vm).getName());
-//			}
 		}
 
 		double timeNow = CloudSim.clock();
 		double prevEnergyConsumption = getEnergyConsumption();
-//		double currEnergyConsumption = (timeNow - lastUtilizationUpdateTime) * getHost().getPowerModel().getPower(taskNum == 0 ? 0 : lastUtilization);
 		double currEnergyConsumption = (timeNow - lastUtilizationUpdateTime) * getHost().getPowerModel().getPower(lastUtilization);
 		double newEnergyConsumption = prevEnergyConsumption + currEnergyConsumption;
 		setEnergyConsumption(newEnergyConsumption);
-
-//		if(getName().startsWith("_mobile")){
-//			System.out.println("------------------------");
-//			if (lastUtilization >= 1.0)
-//				System.out.println("Utilization = "+lastUtilization);
-//			System.out.println("Power = "+getHost().getPowerModel().getPower(lastUtilization));
-//			System.out.println(timeNow-lastUtilizationUpdateTime);
-//		}
 
 		double currentCost = getTotalCost();
 		double newcost = currentCost + (timeNow - lastUtilizationUpdateTime) * getRatePerMips() * lastUtilization * getHost().getTotalMips();
@@ -636,7 +684,6 @@ public class FogDevice extends PowerDatacenter {
 		int tupleLength = tupleItems.size();
 		DatacenterCharacteristics datacenterCharacteristics = getCharacteristics();
 		int mips = datacenterCharacteristics.getMips();
-//		System.out.println(mips +"  233333" + "");
 
 		double mipsPerTuple = (double) mips / tupleLength;
 
@@ -648,47 +695,54 @@ public class FogDevice extends PowerDatacenter {
 		send(ev.getSource(), anotherMobile.getId(), CloudSim.getMinTimeBetweenEvents(), FogEvents.TUPLE_ARRIVAL, tuple);
 	}
 
-	protected void processTupleArrival(SimEvent ev) {
+	private boolean originalPolicy(SimEvent ev) {
 		Tuple tuple = (Tuple) ev.getData();
-		// 怎么样拦截并重定向任务目的地
-//		fogDevices.forEach(i -> i.getId());
-		if (getName().startsWith("mobile")) {
-			System.out.println("mobile lastUtilization " + lastUtilization + "taskNum " + taskNum);
-			if (Configs.USE_ANOTHER_DEVICE == 1) {
+		if (Configs.USE_ANOTHER_DEVICE == 1) {
 //				System.out.println(Math.random() +"    "+ (2000 - Configs.MIPS) / 2000.0);
-				if (taskNum >= 1 && ((double) anotherMobile.taskNum / (double) taskNum) < (2000.0 - Configs.MIPS) / Configs.MIPS) {
-//				System.err.println(anotherMobile.taskNum);
-					boolean resultInAnother = this.canAddInDevice(tuple, anotherMobile.getApplicationMap());
-//					System.out.println(resultInAnother + "result in ano");
-					if (resultInAnother) {
-						sendToAnotherDevice(ev);
-						return;
-					}
-					boolean result = this.canAddInDevice(tuple, getApplicationMap());
-					if (!result) {
-						sendUp(tuple);
-						return;
-					}
-				} else {
-					boolean result = this.canAddInDevice(tuple, getApplicationMap());
-					if (!result) {
-						boolean resultInAnother = this.canAddInDevice(tuple, anotherMobile.getApplicationMap());
-						if (resultInAnother) {
-							sendToAnotherDevice(ev);
-							return;
-						} else {
-							sendUp(tuple);
-							return;
-						}
-					}
+			if (taskNum >= 1 && ((double) anotherMobile.taskNum / (double) taskNum) < (2000.0 - Configs.MIPS) / Configs.MIPS) {
+				boolean resultInAnother = this.canAddInDevice(tuple, anotherMobile.getApplicationMap());
+				if (resultInAnother) {
+					sendToAnotherDevice(ev);
+					return true;
+				}
+				boolean result = this.canAddInDevice(tuple, getApplicationMap());
+				if (!result) {
+					sendUp(tuple);
+					return true;
 				}
 			} else {
 				boolean result = this.canAddInDevice(tuple, getApplicationMap());
 				if (!result) {
-					sendUp(tuple);
-					return;
+					boolean resultInAnother = this.canAddInDevice(tuple, anotherMobile.getApplicationMap());
+					if (resultInAnother) {
+						sendToAnotherDevice(ev);
+					} else {
+						sendUp(tuple);
+					}
+					return true;
 				}
 			}
+		} else {
+			boolean result = this.canAddInDevice(tuple, getApplicationMap());
+			if (!result) {
+				sendUp(tuple);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	protected void processTupleArrival(SimEvent ev) {
+		Tuple tuple = (Tuple) ev.getData();
+		// 怎么样拦截并重定向任务目的地
+//		if (this.originalPolicy(ev)) {
+//			return;
+//		}
+
+
+		if (getName().startsWith("mobile")) {
+			System.out.println("mobile lastUtilization " + lastUtilization + "taskNum " + taskNum);
+
 		}
 		if (getName().startsWith("_mobile")) {
 			System.out.println("_mobile lastUtilization " + lastUtilization + "taskNum " + taskNum);
@@ -714,7 +768,7 @@ public class FogDevice extends PowerDatacenter {
 			return;
 		}
 
-		// TODO check this
+		// 这是一个兜底逻辑，取出一个待执行的任务，将全部资源分配给它，在后面的逻辑判断中有可能覆盖这个逻辑，执行其他任务
 		if (getHost().getVmList().size() > 0) {
 			final AppModule operator = (AppModule) getHost().getVmList().get(0);
 			if (CloudSim.clock() > 0) {
@@ -877,7 +931,9 @@ public class FogDevice extends PowerDatacenter {
 	protected void sendUpFreeLink(Tuple tuple) {
 		double networkDelay = tuple.getCloudletFileSize() / getUplinkBandwidth();
 		setNorthLinkBusy(true);
+		// 传完了更新队列
 		send(getId(), networkDelay, FogEvents.UPDATE_NORTH_TUPLE_QUEUE);
+		setPower(getPower() + networkDelay * transmitPower);
 		send(parentId, networkDelay + getUplinkLatency(), FogEvents.TUPLE_ARRIVAL, tuple);
 		NetworkUsageMonitor.sendingTuple(getUplinkLatency(), tuple.getCloudletFileSize());
 	}

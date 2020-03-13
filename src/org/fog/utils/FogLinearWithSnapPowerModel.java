@@ -14,7 +14,7 @@ public class FogLinearWithSnapPowerModel implements PowerModel {
 	/**
 	 * The constant.
 	 */
-	private double constant;
+	private double a;
 	/**
 	 * The static power.
 	 */
@@ -22,8 +22,10 @@ public class FogLinearWithSnapPowerModel implements PowerModel {
 	private double sleepPower;
 	private String nodeName;
 
+	public final float minFrequencyRatio = 1.0f / 3;
+
 	/**
-	 * Instantiates a new linear power model.
+	 * Instantiates a power model.
 	 *
 	 * @param maxPower    the max power
 	 * @param staticPower the static power
@@ -33,7 +35,8 @@ public class FogLinearWithSnapPowerModel implements PowerModel {
 		setMaxPower(maxPower);
 		setStaticPower(staticPower);
 		setSleepPower(sleepPower);
-		setConstant((maxPower - getStaticPower()) / 100);
+		// P(max) = aU(max)^2
+		a = maxPower;
 	}
 
 	/*
@@ -50,7 +53,11 @@ public class FogLinearWithSnapPowerModel implements PowerModel {
 		if (utilization == 0 && nodeName.startsWith("_mobile")) {
 			return sleepPower;
 		}
-		return getStaticPower() + getConstant() * utilization * 100;
+		// 资源占用率低于最小频率的，此时频率只能为最小频率，所以返回最小功耗
+		if (utilization <= minFrequencyRatio) {
+			return staticPower;
+		}
+		return a * utilization * utilization;
 	}
 
 	/**
@@ -69,24 +76,6 @@ public class FogLinearWithSnapPowerModel implements PowerModel {
 	 */
 	protected void setMaxPower(double maxPower) {
 		this.maxPower = maxPower;
-	}
-
-	/**
-	 * Gets the constant.
-	 *
-	 * @return the constant
-	 */
-	protected double getConstant() {
-		return constant;
-	}
-
-	/**
-	 * Sets the constant.
-	 *
-	 * @param constant the new constant
-	 */
-	protected void setConstant(double constant) {
-		this.constant = constant;
 	}
 
 	/**

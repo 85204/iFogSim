@@ -53,8 +53,8 @@ public class VRGameFog {
 	 * dept means gateway
 	 * 1 cloud 1 proxy has the numbers of dept gateways
 	 */
-	static int numOfDepts = 4;
-	static int numOfMobilesPerDept = 6;
+	static final int numOfDepts = 4;
+	static final int numOfMobilesPerDept = 6;
 //	static double EEG_TRANSMISSION_TIME = 5.1;
 	static double EEG_TRANSMISSION_TIME = 10;
 
@@ -93,6 +93,10 @@ public class VRGameFog {
 					moduleMapping.addModuleToDevice("client", fog.getName()); // fixing all instances of the Connector module to the Cloud
 					moduleMapping.addModuleToDevice("concentration_calculator", fog.getName()); // fixing all instances of the Connector module to the Cloud
 				}
+				if(fog.getName().startsWith("edge")){
+					moduleMapping.addModuleToDevice("client", fog.getName()); // fixing all instances of the Connector module to the Cloud
+					moduleMapping.addModuleToDevice("concentration_calculator", fog.getName()); // fixing all instances of the Connector module to the Cloud
+				}
 				if(fog.getName().startsWith("cloud")){
 					moduleMapping.addModuleToDevice("client", fog.getName()); // fixing all instances of the Connector module to the Cloud
 					moduleMapping.addModuleToDevice("concentration_calculator", fog.getName()); // fixing all instances of the Connector module to the Cloud
@@ -128,9 +132,9 @@ public class VRGameFog {
 	 * @param appId
 	 */
 	private static void createFogDevices(int userId, String appId) {
-		FogDevice cloud = createFogDevice("cloud", 44800, 40000, 100, 10000, 0, 0.01, 16 * 103, 16 * 83.25, 4.5); // creates the fog device Cloud at the apex of the hierarchy with level=0
+		FogDevice cloud = createFogDevice("cloud", 448000000, 40000, 100, 10000, 0, 0.01, 16 * 103, 16 * 83.25, 4.5, 100); // creates the fog device Cloud at the apex of the hierarchy with level=0
 		cloud.setParentId(-1);
-		FogDevice proxy = createFogDevice("proxy-server", 2800, 4000, 10000, 10000, 1, 0.0, 107.339, 83.4333, 4); // creates the fog device Proxy Server (level=1)
+		FogDevice proxy = createFogDevice("proxy-server", 2800, 4000, 10000, 10000, 1, 0.0, 107.339, 83.4333, 4, 100); // creates the fog device Proxy Server (level=1)
 		proxy.setParentId(cloud.getId()); // setting Cloud as parent of the Proxy Server
 		proxy.setUplinkLatency(100); // latency of connection from Proxy Server to the Cloud is 100 ms
 
@@ -138,21 +142,15 @@ public class VRGameFog {
 		fogDevices.add(proxy);
 
 		for (int i = 0; i < numOfDepts; i++) {
-			addGw(i + "", userId, appId, proxy.getId()); // adding a fog device for every Gateway in physical topology. The parent of each gateway is the Proxy Server
+			addEdgeServer(i + "", userId, appId, proxy.getId()); // adding a fog device for every Gateway in physical topology. The parent of each gateway is the Proxy Server
 		}
-
 	}
 
-	private static FogDevice addGw(String id, int userId, String appId, int parentId) {
-		FogDevice dept = createFogDevice("Gateway-" + id, 1400, 2000, 5000, 5000, 1, 0.0, 107.339 / 2, 83.4333 / 2, 4.5);
+	private static FogDevice addEdgeServer(String id, int userId, String appId, int parentId) {
+		FogDevice dept = createFogDevice("edge-" + id, 10400, 20000, 5000, 5000, 1, 0.0, 107.339 / 2, 83.4333 / 2, 4.5, 100);
 		fogDevices.add(dept);
 		dept.setParentId(parentId);
 		dept.setUplinkLatency(4); // latency of connection between gateways and proxy server is 4 ms
-
-//		FogDevice deptBackUp = createFogDevice("_Gateway-" + id, 1400, 2000, 5000, 5000, 1, 0.0, 107.339 / 2, 83.4333 / 2, 4.5);
-//		fogDevices.add(deptBackUp);
-//		deptBackUp.setParentId(parentId);
-//		deptBackUp.setUplinkLatency(4); // latency of connection between gateways and proxy server is 4 ms
 
 		for (int i = 0; i < numOfMobilesPerDept; i++) {
 			String mobileId = id + "-" + i;
@@ -165,21 +163,19 @@ public class VRGameFog {
 
 	private static FogDevice addMobile(String id, int userId, String appId, int parentId) {
 		FogDevice mobile;
-//		System.err.println(Configs.MIPS);
-//		System.err.println(Configs.USE_ANOTHER_DEVICE);
 
 		int totalMips = 2000;
 
 		if (Configs.USE_ANOTHER_DEVICE == 1) {
-			mobile = createFogDevice("mobile-" + id, Configs.MIPS, 1000, 10000, 270, 3, 0, 87.53 / totalMips * Configs.MIPS, 82.44 / totalMips * Configs.MIPS, 4.5);
+			mobile = createFogDevice("mobile-" + id, Configs.MIPS, 1000, 10000, 270, 3, 0, 87.53 / totalMips * Configs.MIPS, 82.44 / totalMips * Configs.MIPS, 4.5, 1000);
 			mobile.setParentId(parentId);
-			FogDevice anotherMobile = createFogDevice("_mobile-" + id, totalMips - Configs.MIPS, 1000, 10000, 270, 3, 0, 87.53 / totalMips * (totalMips - Configs.MIPS), 82.44 / totalMips * (totalMips - Configs.MIPS), 4.5);
+			FogDevice anotherMobile = createFogDevice("_mobile-" + id, totalMips - Configs.MIPS, 1000, 10000, 270, 3, 0, 87.53 / totalMips * (totalMips - Configs.MIPS), 82.44 / totalMips * (totalMips - Configs.MIPS), 4.5, 1000);
 			anotherMobile.setParentId(parentId);
 			anotherMobile.setUplinkLatency(2); // latency of connection between the smartphone and proxy server is 4 ms
 			fogDevices.add(anotherMobile);
 			mobile.anotherMobile = anotherMobile;
 		} else {
-			mobile = createFogDevice("mobile-" + id, totalMips, 1000, 10000, 270, 3, 0, 87.53, 82.44, 4.5);
+			mobile = createFogDevice("mobile-" + id, totalMips, 1000, 10000, 270, 3, 0, 87.53, 82.44, 4.5, 1000);
 			mobile.setParentId(parentId);
 		}
 
@@ -210,7 +206,7 @@ public class VRGameFog {
 	 * @return
 	 */
 	private static FogDevice createFogDevice(String nodeName, long mips,
-																					 int ram, long upBw, long downBw, int level, double ratePerMips, double busyPower, double idlePower, double sleepPower) {
+																					 int ram, long upBw, long downBw, int level, double ratePerMips, double busyPower, double idlePower, double sleepPower, double transmitPower) {
 
 		List<Pe> peList = new ArrayList<Pe>();
 
@@ -254,7 +250,7 @@ public class VRGameFog {
 		FogDevice fogdevice = null;
 		try {
 			fogdevice = new FogDevice(nodeName, characteristics,
-							new AppModuleAllocationPolicy(hostList), storageList, 10, upBw, downBw, 0, ratePerMips, 5, fogDevices);
+							new AppModuleAllocationPolicy(hostList), storageList, 10, upBw, downBw, 0, ratePerMips, 5, fogDevices, transmitPower);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

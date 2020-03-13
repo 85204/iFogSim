@@ -4,7 +4,7 @@ import org.fog.test.perfeval.VRGameFog;
 
 
 public class Configs {
-	public static int USE_ANOTHER_DEVICE = 1;
+	public static int USE_ANOTHER_DEVICE = 0;
 	public static int MIPS = 1600;
 	public static int TRANSPORT_TASK_NUM = 5;
 	public static int MEAN = 6;
