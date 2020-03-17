@@ -53,8 +53,8 @@ public class VRGameFog {
 	 * dept means gateway
 	 * 1 cloud 1 proxy has the numbers of dept gateways
 	 */
-	static final int numOfDepts = 4;
-	static final int numOfMobilesPerDept = 6;
+	static final int numOfDepts = 1;
+	static final int numOfMobilesPerDept = 1;
 //	static double EEG_TRANSMISSION_TIME = 5.1;
 	static double EEG_TRANSMISSION_TIME = 10;
 

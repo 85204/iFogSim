@@ -7,6 +7,7 @@ import org.cloudbus.cloudsim.core.SimEvent;
 import org.fog.application.AppEdge;
 import org.fog.application.AppLoop;
 import org.fog.application.Application;
+import org.fog.test.Configs;
 import org.fog.utils.*;
 import org.fog.utils.distribution.Distribution;
 
@@ -90,7 +91,7 @@ public class Sensor extends SimEntity {
 		long nwLength = (long) _edge.getTupleNwLength();
 
 		Tuple tuple = new Tuple(getAppId(), FogUtils.generateTupleId(), Tuple.UP, cpuLength, 1, nwLength, outputSize,
-						new UtilizationModelFull(), new UtilizationModelFull(), new UtilizationModelFull(), 20000);
+						new UtilizationModelFull(), new UtilizationModelFull(), new UtilizationModelFull(), Configs.getMaxTolerateDelay());
 		tuple.setUserId(getUserId());
 		tuple.setTupleType(getTupleType());
 
@@ -131,7 +132,7 @@ public class Sensor extends SimEntity {
 //		} else
 			send(gatewayDeviceId, CloudSim.getMinTimeBetweenEvents(), FogEvents.SENSOR_JOINED, geoLocation);
 			// 发送初始任务
-		send(getId(), getTransmitDistribution().getNextValue(), FogEvents.EMIT_TUPLE);
+		send(getId(), CloudSim.getMinTimeBetweenEvents(), FogEvents.EMIT_TUPLE);
 	}
 
 	@Override

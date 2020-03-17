@@ -14,6 +14,9 @@ public class Configs {
 	public static double b = 0;
 	public static double bP = 0;
 	public static Thread aa;
+	public static double getMaxTolerateDelay() {
+		return 5;
+	}
 
 
 	public static void main(String[] args) {

@@ -25,7 +25,7 @@ import java.util.*;
 public class FogDevice extends PowerDatacenter {
 	public List<FogDevice> fogDevices;
 	public FogDevice anotherMobile;
-	public int taskNum = 0;
+	public double taskNum = 0;
 	public double transmitPower;
 	protected Queue<Tuple> northTupleQueue;
 	protected Queue<Pair<Tuple, Integer>> southTupleQueue;
@@ -492,8 +492,8 @@ public class FogDevice extends PowerDatacenter {
 				while (vm.getCloudletScheduler().isFinishedCloudlets()) {
 					Cloudlet cl = vm.getCloudletScheduler().getNextFinishedCloudlet();
 					if (cl != null) {
-						taskNum--;
 						cloudletCompleted = true;
+						taskNum -= 1;
 						Tuple tuple = (Tuple) cl;
 						TimeKeeper.getInstance().tupleEndedExecution(tuple);
 						Application application = getApplicationMap().get(tuple.getAppId());
@@ -512,7 +512,7 @@ public class FogDevice extends PowerDatacenter {
 			}
 		}
 		if (cloudletCompleted) {
-			updateAllocatedMips(null);
+			updateAllocatedMips(null, null);
 		}
 	}
 
@@ -555,7 +555,7 @@ public class FogDevice extends PowerDatacenter {
 	}
 
 	// 找到参数内指定的这个任务，将全部资源分配给它
-	protected void updateAllocatedMips(String incomingOperator) {
+	protected void updateAllocatedMips(String incomingOperator, Tuple tuple) {
 		getHost().getVmScheduler().deallocatePesForAllVms();
 
 		for (final Vm vm : getHost().getVmList()) {
@@ -565,10 +565,16 @@ public class FogDevice extends PowerDatacenter {
 
 					{
 						// 这里就是放置了全部的MIPS资源，必须小于最大mips，否则不成功卸载
-						add((double) getHost().getTotalMips());
+//						add((double) getHost().getTotalMips());
+						double minRequiredMips = tuple == null ? Double.MAX_VALUE : (double) tuple.getCloudletLength() / tuple.getMaxTolerateDelay();
+						if (minRequiredMips != Double.MAX_VALUE) {
+//							System.out.println(1);
+						}
+						double allocateMips = Math.min(minRequiredMips, getHost().getTotalMips());
+						add(allocateMips / 2);
 					}
 				});
-				System.out.println("是否成功分配计算资源" + isSuccess);
+//				System.out.println("是否成功分配计算资源" + isSuccess);
 			} else {
 				getHost().getVmScheduler().allocatePesForVm(vm, new ArrayList<Double>() {
 					protected static final long serialVersionUID = 1L;
@@ -609,6 +615,13 @@ public class FogDevice extends PowerDatacenter {
 		double totalMips = getHost().getTotalMips();
 		lastUtilization = Math.min(1, totalMipsAllocated / totalMips);
 		lastUtilizationUpdateTime = timeNow;
+		if (getName().startsWith("mobile")) {
+			System.out.println("mobile lastUtilization " + lastUtilization + "taskNum " + taskNum);
+
+		}
+		if (getName().startsWith("_mobile")) {
+			System.out.println("_mobile lastUtilization " + lastUtilization + "taskNum " + taskNum);
+		}
 	}
 
 	protected void processAppSubmit(SimEvent ev) {
@@ -690,7 +703,7 @@ public class FogDevice extends PowerDatacenter {
 		return tupleItems.stream().allMatch(item -> item.remainingLength / mipsPerTuple < item.remainingDelay);
 	}
 
-	private void sendToAnotherDevice (SimEvent ev) {
+	private void sendToAnotherDevice(SimEvent ev) {
 		Tuple tuple = (Tuple) ev.getData();
 		send(ev.getSource(), anotherMobile.getId(), CloudSim.getMinTimeBetweenEvents(), FogEvents.TUPLE_ARRIVAL, tuple);
 	}
@@ -738,15 +751,6 @@ public class FogDevice extends PowerDatacenter {
 //		if (this.originalPolicy(ev)) {
 //			return;
 //		}
-
-
-		if (getName().startsWith("mobile")) {
-			System.out.println("mobile lastUtilization " + lastUtilization + "taskNum " + taskNum);
-
-		}
-		if (getName().startsWith("_mobile")) {
-			System.out.println("_mobile lastUtilization " + lastUtilization + "taskNum " + taskNum);
-		}
 
 		if (getName().equals("cloud")) {
 			System.out.println("cloud lastUtilization " + lastUtilization + "taskNum " + taskNum);
@@ -879,13 +883,13 @@ public class FogDevice extends PowerDatacenter {
 		}
 
 		TimeKeeper.getInstance().tupleStartedExecution(tuple);
-		updateAllocatedMips(moduleName);
+		updateAllocatedMips(moduleName, tuple);
 		processCloudletSubmit(ev, false);
-		updateAllocatedMips(moduleName);
+//		updateAllocatedMips(moduleName, tuple);
 		/*for(Vm vm : getHost().getVmList()){
 			Logger.error(getName(), "MIPS allocated to "+((AppModule)vm).getName()+" = "+getHost().getTotalAllocatedMipsForVm(vm));
 		}*/
-		taskNum++;
+		taskNum += 1;
 	}
 
 	protected void processModuleArrival(SimEvent ev) {

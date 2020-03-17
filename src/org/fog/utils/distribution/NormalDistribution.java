@@ -15,9 +15,10 @@ public class NormalDistribution extends Distribution {
 
 	@Override
 	public double getNextValue() {
-		double value = random.nextGaussian() * stdDev + mean;
-		System.out.println(value);
-		return value;
+		return 40;
+//		double value = random.nextGaussian() * stdDev + mean;
+//		System.out.println(value);
+//		return value;
 	}
 
 	public double getMean() {
