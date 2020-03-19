@@ -19,8 +19,10 @@ class Node(
   // 功耗模型
   powerModel: (node: Node) -> (task: Task, index: Int) -> PowerConsumption,
   // 延迟模型
-  delayModel: (node: Node) -> (task: Task, index: Int) -> Delay
-) {
+  delayModel: (node: Node) -> (task: Task, index: Int) -> Delay,
+  // 节点下接入孩子的个数，影响等待队列的因素
+  val children: Int = 0
+  ) {
   // 转换为Mips
   val frequencyToMips = { frequency: Double ->
     alpha * frequency
