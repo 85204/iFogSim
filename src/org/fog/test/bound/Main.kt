@@ -5,10 +5,6 @@ fun updateNode(task: Task, structure: Array<Node>, parentNode: TreeNode, taskInd
   // 传递已经部署任务的层
   node.taskDeployed = parentNode.taskDeployed
 
-//  if (taskIndex == 3 && deviceIndex == 2) {
-//    println()
-//  }
-
   node.currentPowerConsumption = parentNode.currentPowerConsumption + when (deviceIndex) {
     // 如果是本地计算
     0 -> structure[0].getPower(task, taskIndex).calcPower
@@ -70,8 +66,8 @@ fun branchAndBound(task: Task, structure: Array<Node>, root: TreeNode): Result {
   return result
 }
 
-fun greedy(task: Task, structure: Array<Node>, root: TreeNode): Result {
-  var result = Result(0.0, 0.0)
+fun greedy(task: Task, structure: Array<Node>, root: TreeNode, track: Boolean = true): Result {
+  var result: Result? = null
 
   fun rotate(node: TreeNode, taskIndex: Int = 0): Boolean {
     // 更新所有可能情况的数据
@@ -83,32 +79,37 @@ fun greedy(task: Task, structure: Array<Node>, root: TreeNode): Result {
     node.children.sortBy { it.currentPowerConsumption }
 
     val n = node.children.find {
-      // 到叶子节点就输出结果，不到就递归求解
-      if (it.children.size != 0) {
-        return@find rotate(it, taskIndex + 1)
-      } else if (it.currentDelay <= task.maxDelay) {
-        result = Result(it.currentPowerConsumption, it.currentDelay)
-        return@find true
+      when {
+        // 到叶子节点就输出结果，不到就递归求解
+        it.children.size != 0 -> rotate(it, taskIndex + 1)
+        it.currentDelay <= task.maxDelay || !track -> {
+          result = Result(it.currentPowerConsumption, it.currentDelay)
+          true
+        }
+        else -> false
       }
-      false
     }
     return n != null
   }
 
   rotate(root)
-//  if (result.delay > task.maxDelay) {
-//    throw Error("找到的解超过最大延迟")
-//  }
-  return result
+  if (result == null) {
+    throw Error("找不到可行解")
+  } else {
+    if (result!!.delay > task.maxDelay) {
+      return result!!.punish()
+    }
+    return result!!
+  }
 }
 
-const val taskLength = 3
+const val taskLength = 5
 
 const val DEBUG = false
 
 val runTimes: Int = if (DEBUG) 1 else 100
 
-fun run(count: Int = 1, task: Task): Triple<Int, Result?, Result?> {
+fun run(count: Int = 1, task: Task): Triple<Result?, Result?, Result?> {
   val mobile = Node(800.0, 2800.0, 10.0,
     0.01 / 8, 2.0, mobilePowerModel, mobileDelayModel)
 
@@ -124,8 +125,9 @@ fun run(count: Int = 1, task: Task): Triple<Int, Result?, Result?> {
   val devicesName = arrayOf("mobile", "edge", "cloud")
 
   var root: TreeNode
-  var result: Result? = null
-  var result2: Result? = null
+  var branchAndBoundResult: Result? = null
+  var greedyResult: Result? = null
+  var greedyWithoutTrackResult: Result? = null
 
   fun printTree(root: TreeNode, devicePath: Array<Int> = arrayOf()) {
     if (devicePath.isNotEmpty()) {
@@ -148,8 +150,16 @@ fun run(count: Int = 1, task: Task): Triple<Int, Result?, Result?> {
   for (i in 1..runTimes) {
     try {
       root = createTree(task.length.size, structure.size)
-      var newResult = greedy(task, structure, root)
-      result2 = result2?.acc(newResult) ?: newResult
+      var newResult = greedy(task, structure, root, false)
+      greedyWithoutTrackResult = greedyWithoutTrackResult?.acc(newResult) ?: newResult
+      if (DEBUG) {
+        printTree(root)
+        println("=======================================")
+      }
+
+      root = createTree(task.length.size, structure.size)
+      newResult = greedy(task, structure, root)
+      greedyResult = greedyResult?.acc(newResult) ?: newResult
       if (DEBUG) {
         printTree(root)
         println("=======================================")
@@ -157,7 +167,7 @@ fun run(count: Int = 1, task: Task): Triple<Int, Result?, Result?> {
 
       root = createTree(task.length.size, structure.size)
       newResult = branchAndBound(task, structure, root)
-      result = result?.acc(newResult) ?: newResult
+      branchAndBoundResult = branchAndBoundResult?.acc(newResult) ?: newResult
       if (DEBUG) printTree(root)
 
     } catch (e: Error) {
@@ -165,37 +175,41 @@ fun run(count: Int = 1, task: Task): Triple<Int, Result?, Result?> {
     updateWaitDelay()
     Thread.sleep(3)
   }
-//  println("mobile 数量: $mobileCount")
-//  println("branch and bound: ${result ?: "找不到可行解"}")
-//  println("greedy: ${result2 ?: "找到的解超过最大延迟"}")
-//  println("$mobileCount,$result,$result2")
-  return Triple(count, result, result2)
+  return Triple(branchAndBoundResult, greedyResult, greedyWithoutTrackResult)
+}
+
+data class Results(
+  val param: Int,
+  val results: Array<Result>
+)
+
+fun Int.toRange(): IntRange {
+  return this..this
 }
 
 fun main() {
-  val result = arrayOf(*Array(8) { Triple(it + 1, Result(0.0, 0.0), Result(0.0, 0.0)) })
-  val paramRange = if (DEBUG) 1..1 else 1..8 step 1
+  val result = arrayOf(*Array(10) { Results(it + 1, arrayOf(*Array(3) { Result(0.0, 0.0) })) })
+  val paramRange = if (DEBUG) 4000.toRange() else 4000..4900 step 100
   while (true) {
-    for (param in paramRange) {
+    for ((i, param) in paramRange.withIndex()) {
       // 可变的量 任务传输大小 任务计算量 子任务数量 容忍延迟
-      val task = Task(1000.0, arrayOf(*Array(taskLength) { (it + 1).toLong() * 500000 }), 200.0)
+      val task = Task(param.toDouble(), arrayOf(*Array(taskLength) { (it + 1).toLong() * 5000 }), 200.0)
 
-      val (count, r1, r2) = run(task = task, count = param)
+      val (r1, r2, r3) = run(task = task, count = 2)
       if (DEBUG)
-        println("$count, $r1, $r2")
+        println("$param, $r1, $r2, $r3")
       else {
-        val updateValue = result[count - 1]
-        result[count - 1] = Triple(count, updateValue.second.acc(r1!!), updateValue.third.acc(r2!!))
+        val updateValue = result[i]
+        result[i] = Results(param, arrayOf(updateValue.results[0].acc(r1!!), updateValue.results[1].acc(r2!!), updateValue.results[2].acc(r3!!)))
       }
     }
     if (DEBUG) break
 
     Cls.cls()
-    println("          branchAndBound               greedy")
-    println("num     power      delay      power     delay")
+    println("             branchAndBound                 greedy     greedyWithoutTrack")
+    println("param      power      delay        power     delay        power     delay")
     result.forEach {
-      val (c, b, g) = it
-      println("$c,${b.adv()},${g.adv()}")
+      println("${it.param},${it.results.map { r -> r.adv() }}")
     }
   }
 }

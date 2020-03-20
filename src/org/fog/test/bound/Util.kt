@@ -42,6 +42,10 @@ fun Result.adv(): Result {
   return Result(this.power / this.count, this.delay / this.count)
 }
 
+fun Result.punish(): Result {
+  return Result(this.power * 640, this.delay, this.count)
+}
+
 const val ANSI_GREEN = "\u001B[32m"
 const val ANSI_RED = "\u001b[31m"
 const val ANSI_RESET = "\u001B[0m"
