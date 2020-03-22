@@ -66,7 +66,7 @@ fun branchAndBound(task: Task, structure: Array<Node>, root: TreeNode): Result {
   return result
 }
 
-fun greedy(task: Task, structure: Array<Node>, root: TreeNode, track: Boolean = true): Result {
+fun greedy(task: Task, structure: Array<Node>, root: TreeNode, track: Boolean = true, sortByConsumption: Boolean = true): Result {
   var result: Result? = null
 
   fun rotate(node: TreeNode, taskIndex: Int = 0): Boolean {
@@ -76,7 +76,10 @@ fun greedy(task: Task, structure: Array<Node>, root: TreeNode, track: Boolean = 
     }
 
     // 贪婪的选择最优解
-    node.children.sortBy { it.currentPowerConsumption }
+    if (sortByConsumption)
+      node.children.sortBy { it.currentPowerConsumption }
+    else
+      node.children.sortBy { it.currentDelay }
 
     val n = node.children.find {
       when {
@@ -109,7 +112,7 @@ const val DEBUG = false
 
 val runTimes: Int = if (DEBUG) 1 else 100
 
-fun run(count: Int = 1, task: Task): Triple<Result?, Result?, Result?> {
+fun run(count: Int = 1, task: Task): Array<Result?> {
   val mobile = Node(800.0, 2800.0, 10.0,
     0.01 / 8, 2.0, mobilePowerModel, mobileDelayModel)
 
@@ -128,6 +131,7 @@ fun run(count: Int = 1, task: Task): Triple<Result?, Result?, Result?> {
   var branchAndBoundResult: Result? = null
   var greedyResult: Result? = null
   var greedyWithoutTrackResult: Result? = null
+  var greedyWithoutTrackByDelayResult: Result? = null
 
   fun printTree(root: TreeNode, devicePath: Array<Int> = arrayOf()) {
     if (devicePath.isNotEmpty()) {
@@ -147,35 +151,41 @@ fun run(count: Int = 1, task: Task): Triple<Result?, Result?, Result?> {
     }
   }
 
+  fun runPolicy(policy: (root: TreeNode) -> Result, oldResult: Result?, print: Boolean = false): Result {
+    root = createTree(task.length.size, structure.size)
+    val result = policy(root)
+    val newResult = oldResult?.acc(result) ?: result
+    if (DEBUG && print) {
+      printTree(root)
+      println("=======================================")
+    }
+    return newResult
+  }
+
   for (i in 1..runTimes) {
     try {
-      root = createTree(task.length.size, structure.size)
-      var newResult = greedy(task, structure, root, false)
-      greedyWithoutTrackResult = greedyWithoutTrackResult?.acc(newResult) ?: newResult
-      if (DEBUG) {
-        printTree(root)
-        println("=======================================")
-      }
+      greedyWithoutTrackByDelayResult = runPolicy({
+        greedy(task, structure, it, false, sortByConsumption = false)
+      }, greedyWithoutTrackByDelayResult)
 
-      root = createTree(task.length.size, structure.size)
-      newResult = greedy(task, structure, root)
-      greedyResult = greedyResult?.acc(newResult) ?: newResult
-      if (DEBUG) {
-        printTree(root)
-        println("=======================================")
-      }
+      greedyWithoutTrackResult = runPolicy({
+        greedy(task, structure, it, track = false, sortByConsumption = true)
+      }, greedyWithoutTrackResult, true)
 
-      root = createTree(task.length.size, structure.size)
-      newResult = branchAndBound(task, structure, root)
-      branchAndBoundResult = branchAndBoundResult?.acc(newResult) ?: newResult
-      if (DEBUG) printTree(root)
+      greedyResult = runPolicy({
+        greedy(task, structure, it)
+      }, greedyResult)
+
+      branchAndBoundResult = runPolicy({
+        branchAndBound(task, structure, it)
+      }, branchAndBoundResult)
 
     } catch (e: Error) {
     }
     updateWaitDelay()
     Thread.sleep(3)
   }
-  return Triple(branchAndBoundResult, greedyResult, greedyWithoutTrackResult)
+  return arrayOf(branchAndBoundResult, greedyResult, greedyWithoutTrackResult, greedyWithoutTrackByDelayResult)
 }
 
 data class Results(
@@ -188,26 +198,26 @@ fun Int.toRange(): IntRange {
 }
 
 fun main() {
-  val result = arrayOf(*Array(10) { Results(it + 1, arrayOf(*Array(3) { Result(0.0, 0.0) })) })
+  val result = arrayOf(*Array(10) { Results(it + 1, arrayOf(*Array(4) { Result(0.0, 0.0) })) })
   val paramRange = if (DEBUG) 4000.toRange() else 4000..4900 step 100
   while (true) {
     for ((i, param) in paramRange.withIndex()) {
       // 可变的量 任务传输大小 任务计算量 子任务数量 容忍延迟
       val task = Task(param.toDouble(), arrayOf(*Array(taskLength) { (it + 1).toLong() * 5000 }), 200.0)
 
-      val (r1, r2, r3) = run(task = task, count = 2)
+      val r = run(task = task, count = 2)
       if (DEBUG)
-        println("$param, $r1, $r2, $r3")
+        println("$param, ${r.joinToString { it?.toString() ?: "" }}")
       else {
         val updateValue = result[i]
-        result[i] = Results(param, arrayOf(updateValue.results[0].acc(r1!!), updateValue.results[1].acc(r2!!), updateValue.results[2].acc(r3!!)))
+        result[i] = Results(param, updateValue.results.mapIndexed { ii, it -> it.acc(r[ii]!!) }.toTypedArray())
       }
     }
     if (DEBUG) break
 
     Cls.cls()
-    println("             branchAndBound                 greedy     greedyWithoutTrack")
-    println("param      power      delay        power     delay        power     delay")
+    println("             branchAndBound                 greedy     greedyWithoutTrack greedyWithoutTrackByDelay")
+    println("param      power      delay        power     delay        power     delay        power     delay")
     result.forEach {
       println("${it.param},${it.results.map { r -> r.adv() }}")
     }
