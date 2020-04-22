@@ -27,7 +27,8 @@ fun createTree(deep: Int, size: Int, root: TreeNode = TreeNode()): TreeNode {
 data class Result(
   val power: Double,
   val delay: Double,
-  val count: Long = 1
+  val count: Long = 1,
+  val validCount: Long = 1
 ) {
   override fun toString(): String {
     return """ ${String.format("%9.2f", power)}, ${String.format("%9.2f", delay)}"""
@@ -35,7 +36,8 @@ data class Result(
 }
 
 fun Result.acc(result: Result): Result {
-  return Result(this.power + result.power, this.delay + result.delay, this.count + result.count)
+  return Result(this.power + result.power, this.delay + result.delay,
+    this.count + result.count, this.validCount + result.validCount)
 }
 
 fun Result.adv(): Result {
@@ -43,7 +45,11 @@ fun Result.adv(): Result {
 }
 
 fun Result.punish(): Result {
-  return Result(this.power * 640, this.delay, this.count)
+  return Result(this.power * 630, this.delay, this.count)
+}
+
+fun Result.validRatio(): Long {
+  return this.validCount / this.count
 }
 
 const val ANSI_GREEN = "\u001B[32m"

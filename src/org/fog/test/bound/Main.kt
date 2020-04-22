@@ -96,13 +96,14 @@ fun greedy(task: Task, structure: Array<Node>, root: TreeNode, track: Boolean = 
   }
 
   rotate(root)
-  if (result == null) {
+  val r = result
+  if (r == null) {
     throw Error("找不到可行解")
   } else {
-    if (result!!.delay > task.maxDelay) {
-      return result!!.punish()
+    if (r.delay > task.maxDelay) {
+      return r.punish()
     }
-    return result!!
+    return r
   }
 }
 
@@ -199,7 +200,7 @@ fun Int.toRange(): IntRange {
 
 fun main() {
   val result = arrayOf(*Array(10) { Results(it + 1, arrayOf(*Array(4) { Result(0.0, 0.0) })) })
-  val paramRange = if (DEBUG) 4000.toRange() else 4000..4900 step 100
+  val paramRange = if (DEBUG) 4000.toRange() else 1000..9000 step 1000
   while (true) {
     for ((i, param) in paramRange.withIndex()) {
       // 可变的量 任务传输大小 任务计算量 子任务数量 容忍延迟
